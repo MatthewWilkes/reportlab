@@ -2,7 +2,7 @@
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/graphics/charts/linecharts.py
 
-__version__=''' $Id: linecharts.py 3604 2009-11-27 16:35:29Z meitham $ '''
+__version__=''' $Id: linecharts.py 3662 2010-02-09 11:23:58Z rgbecker $ '''
 __doc__="""This modules defines a very preliminary Line Chart example."""
 
 from reportlab.lib import colors
@@ -247,7 +247,7 @@ class HorizontalLineChart(LineChart):
                     labelText = None
             else:
                 labelText = labelFmt % labelValue
-        elif callable(labelFmt):
+        elif hasattr(labelFmt,'__call__'):
             labelText = labelFmt(labelValue)
         else:
             raise ValueError("Unknown formatter type %s, expected string or function"%labelFmt)
@@ -503,7 +503,7 @@ class HorizontalLineChart3D(HorizontalLineChart):
 
         F.sort()
         g = Group()
-        map(lambda x,a=g.add: a(x[-1]),F.value())
+        for v in F.value(): g.add(v[-1])
         return g
 
 class VerticalLineChart(LineChart):

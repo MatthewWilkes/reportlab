@@ -2,7 +2,7 @@
 #see license.txt for license details
 """Tests for reportlab.lib.utils
 """
-__version__=''' $Id: test_lib_utils.py 3291 2008-09-15 13:21:33Z rgbecker $ '''
+__version__=''' $Id: test_lib_utils.py 3660 2010-02-08 18:17:33Z damian $ '''
 from reportlab.lib.testutils import setOutDir,makeSuiteForClasses, printLocation
 setOutDir(__name__)
 import os
@@ -29,7 +29,7 @@ class ImporterTestCase(unittest.TestCase):
     def setUp(self):
         from time import time
         from reportlab.lib.utils import get_rl_tempdir
-        s = `int(time())` + `self.count`
+        s = repr(int(time())) + repr(self.count)
         self.__class__.count += 1
         self._tempdir = get_rl_tempdir('reportlab_test','tmp_%s' % s)
         _testmodulename = os.path.join(self._tempdir,'test_module_%s.py' % s)

@@ -1,6 +1,6 @@
 #copyright ReportLab Europe Limited. 2000-2006
 #see license.txt for license details
-__version__=''' $Id: widgets.py 3086 2007-05-22 13:10:34Z rgbecker $ '''
+__version__=''' $Id: widgets.py 3764 2010-09-06 13:24:45Z juraj $ '''
 __all__= (
         'BarcodeI2of5',
         'BarcodeCode128',
@@ -54,7 +54,8 @@ class _BarcodeWidget(PlotArea):
         gap = AttrMapValue(isNumberOrNone, desc='Width of inter character gaps.'),
         )
 
-    barStrokeColor = barFillColor = textColor = black
+    textColor = barFillColor = black
+    barStrokeColor = None
     barStrokeWidth = 0
     _BCC = None
     def __init__(self,BCC=None,_value='',**kw):
@@ -300,7 +301,8 @@ if __name__=='__main__':
     os.chdir(os.path.dirname(sys.argv[0]))
     if not os.path.isdir('out'):
         os.mkdir('out')
-    map(os.remove,glob.glob(os.path.join('out','*')))
+    for x in glob.glob(os.path.join('out','*')):
+        os.remove(x)
     html = ['<html><head></head><body>']
     a = html.append
     for C in (BarcodeI2of5,

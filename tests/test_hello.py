@@ -1,7 +1,7 @@
 #!/bin/env python
 #Copyright ReportLab Europe Ltd. 2000-2004
 #see license.txt for license details
-__version__='''$Id: test_hello.py 3598 2009-11-23 12:02:16Z rgbecker $'''
+__version__='''$Id: test_hello.py 3660 2010-02-08 18:17:33Z damian $'''
 __doc__="""most basic test possible that makes a PDF.
 
 Useful if you want to test that a really minimal PDF is healthy,
@@ -38,8 +38,8 @@ class HelloTestCase(unittest.TestCase):
         seq._dingo = 1
         rl_config._reset()
         assert not hasattr(seq,'_dingo')
-        assert not tfd.has_key(' a ') and len(tfd)<ntfd
-        assert not fbn.has_key(' a ') and len(fbn)<nfbn
+        assert ' a ' not in tfd and len(tfd)<ntfd
+        assert ' a ' not in fbn and len(fbn)<nfbn
 
 def makeSuite():
     return makeSuiteForClasses(HelloTestCase)

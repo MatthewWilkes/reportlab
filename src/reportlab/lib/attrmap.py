@@ -1,7 +1,7 @@
 #Copyright ReportLab Europe Ltd. 2000-2004
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/lib/attrmap.py
-__version__=''' $Id: attrmap.py 3601 2009-11-26 15:11:20Z rgbecker $ '''
+__version__=''' $Id: attrmap.py 3660 2010-02-08 18:17:33Z damian $ '''
 __doc__='''Framework for objects whose assignments are checked. Used by graphics.
 
 We developed reportlab/graphics prior to Python 2 and metaclasses. For the
@@ -41,7 +41,7 @@ class CallableValue:
         self.kw = kw
 
     def __call__(self):
-        return apply(self.func,self.args,self.kw)
+        return self.func(*self.args,**self.kw)
 
 class AttrMapValue:
     '''Simple multi-value holder for attribute maps'''

@@ -3,7 +3,7 @@
 # Event Calendar widget
 # author: Andy Robinson
 
-__version__=''' $Id: eventcal.py 3345 2008-12-12 17:55:22Z damian $ '''
+__version__=''' $Id: eventcal.py 3660 2010-02-08 18:17:33Z damian $ '''
 __doc__="""This file is a
 """
 
@@ -104,7 +104,7 @@ class EventCalendar(Widget):
         used = []
         for talk in talkList:
             (title, speaker, trackId, day, hours, duration) = talk
-            assert trackId <> 0, "trackId must be None or 1,2,3... zero not allowed!"
+            assert trackId != 0, "trackId must be None or 1,2,3... zero not allowed!"
             if day == self.day:
                 if (((self.startTime is None) or ((hours + duration) >= self.startTime))
                 and ((self.endTime is None) or (hours <= self.endTime))):

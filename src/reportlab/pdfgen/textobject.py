@@ -1,7 +1,7 @@
 #Copyright ReportLab Europe Ltd. 2000-2004
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/pdfgen/textobject.py
-__version__=''' $Id: textobject.py 3610 2009-12-08 09:53:56Z rgbecker $ '''
+__version__=''' $Id: textobject.py 3778 2010-09-17 11:24:04Z rgbecker $ '''
 __doc__="""
 PDFTextObject is an efficient way to add text to a Canvas. Do not
 instantiate directly, obtain one from the Canvas instead.
@@ -11,14 +11,13 @@ Progress Reports:
 """
 import string
 from types import *
-from reportlab.lib.colors import Color, CMYKColor, CMYKColorSep, toColor
+from reportlab.lib.colors import Color, CMYKColor, CMYKColorSep, toColor, black, white, _CMYK_black, _CMYK_white
 from reportlab.lib.utils import fp_str
 from reportlab.pdfbase import pdfmetrics
 
 class _PDFColorSetter:
     '''Abstracts the color setting operations; used in Canvas and Textobject
     asseumes we have a _code object'''
-
     def _checkSeparation(self,cmyk):
         if isinstance(cmyk,CMYKColorSep):
             name,sname = self._doc.addColor(cmyk)
@@ -26,42 +25,36 @@ class _PDFColorSetter:
                 self._colorsUsed[name] = sname
             return name
 
+    #if this is set to a callable(color) --> color it can be used to check color setting
+    #see eg _enforceCMYK/_enforceRGB
+    _enforceColorSpace = None
+
     def setFillColorCMYK(self, c, m, y, k, alpha=None):
          """set the fill color useing negative color values
          (cyan, magenta, yellow and darkness value).
          Takes 4 arguments between 0.0 and 1.0"""
-         self._fillColorObj = (c, m, y, k)
-         self._code.append('%s k' % fp_str(c, m, y, k))
-         if alpha is not None:
-             self.setFillAlpha(alpha)
+         self.setFillColor((c,m,y,k),alpha=alpha)
 
     def setStrokeColorCMYK(self, c, m, y, k, alpha=None):
          """set the stroke color useing negative color values
             (cyan, magenta, yellow and darkness value).
             Takes 4 arguments between 0.0 and 1.0"""
-         self._strokeColorObj = (c, m, y, k)
-         self._code.append('%s K' % fp_str(c, m, y, k))
-         if alpha is not None:
-             self.setStrokeAlpha(alpha)
+         self.setStrokeColor((c,m,y,k),alpha=alpha)
 
     def setFillColorRGB(self, r, g, b, alpha=None):
         """Set the fill color using positive color description
            (Red,Green,Blue).  Takes 3 arguments between 0.0 and 1.0"""
-        self._fillColorObj = (r, g, b)
-        self._code.append('%s rg' % fp_str(r,g,b))
-        if alpha is not None:
-            self.setFillAlpha(alpha)
+        self.setFillColor((r,g,b),alpha=alpha)
 
     def setStrokeColorRGB(self, r, g, b, alpha=None):
         """Set the stroke color using positive color description
            (Red,Green,Blue).  Takes 3 arguments between 0.0 and 1.0"""
-        self._strokeColorObj = (r, g, b)
-        self._code.append('%s RG' % fp_str(r,g,b))
-        if alpha is not None:
-            self.setStrokeAlpha(alpha)
+        self.setStrokeColor((r,g,b),alpha=alpha)
 
     def setFillColor(self, aColor, alpha=None):
         """Takes a color object, allowing colors to be referred to by name"""
+        if self._enforceColorSpace:
+            aColor = self._enforceColorSpace(aColor)
         if isinstance(aColor, CMYKColor):
             d = aColor.density
             c,m,y,k = (d*aColor.cyan, d*aColor.magenta, d*aColor.yellow, d*aColor.black)
@@ -81,7 +74,8 @@ class _PDFColorSetter:
                 self._fillColorObj = aColor
                 self._code.append('%s rg' % fp_str(aColor) )
             elif l==4:
-                self.setFillColorCMYK(aColor[0], aColor[1], aColor[2], aColor[3])
+                self._fillColorObj = aColor
+                self._code.append('%s k' % fp_str(aColor))
             else:
                 raise ValueError('Unknown color %r' % aColor)
         elif isinstance(aColor,basestring):
@@ -95,6 +89,8 @@ class _PDFColorSetter:
 
     def setStrokeColor(self, aColor, alpha=None):
         """Takes a color object, allowing colors to be referred to by name"""
+        if self._enforceColorSpace:
+            aColor = self._enforceColorSpace(aColor)
         if isinstance(aColor, CMYKColor):
             d = aColor.density
             c,m,y,k = (d*aColor.cyan, d*aColor.magenta, d*aColor.yellow, d*aColor.black)
@@ -114,7 +110,8 @@ class _PDFColorSetter:
                 self._strokeColorObj = aColor
                 self._code.append('%s RG' % fp_str(aColor) )
             elif l==4:
-                self.setStrokeColorCMYK(aColor[0], aColor[1], aColor[2], aColor[3])
+                self._fillColorObj = aColor
+                self._code.append('%s K' % fp_str(aColor))
             else:
                 raise ValueError('Unknown color %r' % aColor)
         elif isinstance(aColor,basestring):
@@ -156,6 +153,9 @@ class _PDFColorSetter:
     def setFillOverprint(self,a):
         getattr(self,'_setFillOverprint',lambda x: None)(a)
 
+    def setOverprintMask(self,a):
+        getattr(self,'_setOverprintMask',lambda x: None)(a)
+
 class PDFTextObject(_PDFColorSetter):
     """PDF logically separates text and graphics drawing; text
     operations need to be bracketed between BT (Begin text) and
@@ -175,6 +175,7 @@ class PDFTextObject(_PDFColorSetter):
         self._leading = self._canvas._leading
         self._doc = self._canvas._doc
         self._colorsUsed = self._canvas._colorsUsed
+        self._enforceColorSpace = getattr(canvas,'_enforceColorSpace',None)
         font = pdfmetrics.getFont(self._fontname)
         self._curSubset = -1
         self.setTextOrigin(x, y)

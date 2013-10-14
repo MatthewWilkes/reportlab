@@ -1,12 +1,12 @@
 #Copyright ReportLab Europe Ltd. 2000-2008
 #see license.txt for license details
-__version__=''' $Id: setup.py 3636 2010-01-18 14:31:10Z meitham $ '''
+__version__=''' $Id: setup.py 3730 2010-06-16 11:56:53Z rgbecker $ '''
 import os, sys, glob, ConfigParser, shutil
 platform = sys.platform
 pjoin = os.path.join
 abspath = os.path.abspath
 isfile = os.path.isfile
-isdir = os.path.isfile
+isdir = os.path.isdir
 dirname = os.path.dirname
 if __name__=='__main__':
     pkgDir=dirname(sys.argv[0])
@@ -238,7 +238,7 @@ def get_fonts(PACKAGE_DIR, reportlab_files):
         xitmsg = "Finished download of standard T1 font curves"
     except:
         xitmsg = "Failed to download standard T1 font curves"
-    map(reportlab_files.remove,[x for x in reportlab_files if not os.path.isfile(pjoin(rl_dir,x))])
+    reportlab_files = [x for x in reportlab_files if os.path.isfile(pjoin(rl_dir,x))]
     infoline(xitmsg)
 
 def main():
@@ -346,26 +346,29 @@ def main():
                     ]
 
         if platform=='win32':
-            FT_LIB=config('FREETYPE','lib','')
+            FT_LIB=os.environ.get('FT_LIB','')
+            if not FT_LIB: FT_LIB=config('FREETYPE','lib','')
             if FT_LIB and not os.path.isfile(FT_LIB):
                 infoline('# freetype lib %r not found' % FT_LIB)
                 FT_LIB=[]
             if FT_LIB:
-                FT_INC_DIR=config('FREETYPE','incdir')
+                FT_INC_DIR=os.environ.get('FT_INC','')
+                if not FT_INC_DIR: FT_INC_DIR=config('FREETYPE','inc')
                 FT_MACROS = [('RENDERPM_FT',None)]
                 FT_LIB_DIR = [dirname(FT_LIB)]
                 FT_INC_DIR = [FT_INC_DIR or pjoin(dirname(FT_LIB_DIR[0]),'include')]
+                FT_LIB_PATH = FT_LIB
                 FT_LIB = [os.path.splitext(os.path.basename(FT_LIB))[0]]                
-                if os.path.isdir(FT_INC_DIR[0]):                   
-                    infoline('# installing with win32 freetype %r' % FT_LIB[0])
+                if isdir(FT_INC_DIR[0]):                   
+                    infoline('# installing with freetype %r' % FT_LIB_PATH)
                 else:
                     infoline('# freetype2 include folder %r not found' % FT_INC_DIR[0])
                     FT_LIB=FT_LIB_DIR=FT_INC_DIR=FT_MACROS=[]
             else:
                 FT_LIB=FT_LIB_DIR=FT_INC_DIR=FT_MACROS=[]
         else:
-            FT_LIB_DIR=config('FREETYPE','libdir')
-            FT_INC_DIR=config('FREETYPE','incdir')
+            FT_LIB_DIR=config('FREETYPE','lib')
+            FT_INC_DIR=config('FREETYPE','inc')
             I,L=inc_lib_dirs()
             ftv = None
             for d in I:

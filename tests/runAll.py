@@ -3,7 +3,7 @@
 #see license.txt for license details
 """Runs all test files in all subfolders.
 """
-__version__=''' $Id: runAll.py 3296 2008-09-17 12:56:33Z jonas $ '''
+__version__=''' $Id: runAll.py 3694 2010-04-06 12:54:39Z rgbecker $ '''
 import os, glob, sys, string, traceback, unittest
 
 #we need to ensure 'tests' is on the path.  It will be if you
@@ -114,7 +114,7 @@ def mainEx():
         os.close(sys.stderr.fileno())
 
 def runExternally():
-    cmd = sys.executable+' -c"from tests import runAll;runAll.mainEx()"'
+    cmd = '"%s" -c"from tests import runAll;runAll.mainEx()"' % sys.executable
     i,o,e=os.popen3(cmd)
     i.close()
     out = o.read()

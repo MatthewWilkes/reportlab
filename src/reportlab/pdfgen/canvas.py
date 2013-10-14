@@ -1,6 +1,6 @@
 #Copyright ReportLab Europe Ltd. 2000-2008
 #see license.txt for license details
-__version__=''' $Id: canvas.py 3606 2009-12-03 11:39:56Z rgbecker $ '''
+__version__=''' $Id: canvas.py 3791 2010-09-29 19:37:05Z andy $ '''
 __doc__="""
 The Canvas object is the primary interface for creating PDF files. See
 doc/reportlab-userguide.pdf for copious examples.
@@ -25,7 +25,7 @@ from reportlab.pdfbase import pdfutils
 from reportlab.pdfbase import pdfdoc
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfgen  import pdfgeom, pathobject, textobject
-from reportlab.lib.colors import black
+from reportlab.lib.colors import black, _chooseEnforceColorSpace
 from reportlab.lib.utils import import_zlib, ImageReader, fp_str, _digester
 from reportlab.lib.boxstuff import aspectRatioFix
 
@@ -58,9 +58,9 @@ _instanceEscapePDF = pdfutils._instanceEscapePDF
 
 def _annFormat(D,color,thickness,dashArray,hradius=0,vradius=0):
     from reportlab.pdfbase.pdfdoc import PDFArray, PDFDictionary
-    if color and not D.has_key('C'):
+    if color and 'C' not in D:
         D["C"] = PDFArray([color.red, color.green, color.blue])
-    if not D.has_key('Border'):
+    if 'Border' not in D:
         border = [hradius,vradius,thickness or 0]
         if dashArray:
             border.append(PDFArray(dashArray))
@@ -80,6 +80,7 @@ class   ExtGState:
                 ca=1,
                 OP=False,
                 op=False,
+                OPM=0,
                 )
 
     def __init__(self):
@@ -97,7 +98,7 @@ class   ExtGState:
             if t in self._c:
                 name = self._c[t]
             else:
-                name = 'GS'+str(len(self._c))
+                name = 'gRLs'+str(len(self._c))
                 self._c[t] = name
             canv._code.append('/%s gs' % name)
 
@@ -142,26 +143,29 @@ class Canvas(textobject._PDFColorSetter):
 
     Here is a very silly example usage which generates a Hello World pdf document.
 
-    from reportlab.pdfgen import canvas
-    c = canvas.Canvas("hello.pdf")
-    from reportlab.lib.units import inch
-    # move the origin up and to the left
-    c.translate(inch,inch)
-    # define a large font
-    c.setFont("Helvetica", 80)
-    # choose some colors
-    c.setStrokeColorRGB(0.2,0.5,0.3)
-    c.setFillColorRGB(1,0,1)
-    # draw a rectangle
-    c.rect(inch,inch,6*inch,9*inch, fill=1)
-    # make text go straight up
-    c.rotate(90)
-    # change color
-    c.setFillColorRGB(0,0,0.77)
-    # say hello (note after rotate the y coord needs to be negative!)
-    c.drawString(3*inch, -3*inch, "Hello World")
-    c.showPage()
-    c.save()
+    Example:: 
+    
+       from reportlab.pdfgen import canvas
+       c = canvas.Canvas("hello.pdf")
+       from reportlab.lib.units import inch
+       # move the origin up and to the left
+       c.translate(inch,inch)
+       # define a large font
+       c.setFont("Helvetica", 80)
+       # choose some colors
+       c.setStrokeColorRGB(0.2,0.5,0.3)
+       c.setFillColorRGB(1,0,1)
+       # draw a rectangle
+       c.rect(inch,inch,6*inch,9*inch, fill=1)
+       # make text go straight up
+       c.rotate(90)
+       # change color
+       c.setFillColorRGB(0,0,0.77)
+       # say hello (note after rotate the y coord needs to be negative!)
+       c.drawString(3*inch, -3*inch, "Hello World")
+       c.showPage()
+       c.save()
+
     """
 
     def __init__(self,filename,
@@ -173,6 +177,7 @@ class Canvas(textobject._PDFColorSetter):
                  encrypt=None,
                  cropMarks=None,
                  pdfVersion=None,
+                 enforceColorSpace=None,
                  ):
         """Create a canvas of a given size. etc.
 
@@ -184,6 +189,10 @@ class Canvas(textobject._PDFColorSetter):
         as the preferred interface.  Default page size is A4.
         cropMarks may be True/False or an object with parameters borderWidth, markColor, markWidth
         and markLength
+    
+        if enforceColorSpace is in ('cmyk', 'rgb', 'sep','sep_black','sep_cmyk') then one of
+        the standard _PDFColorSetter callables will be used to enforce appropriate color settings.
+        If it is a callable then that will be used.
         """
         if pagesize is None: pagesize = rl_config.defaultPageSize
         if invariant is None: invariant = rl_config.invariant
@@ -193,6 +202,8 @@ class Canvas(textobject._PDFColorSetter):
                                        invariant=invariant, filename=filename,
                                        pdfVersion=pdfVersion or pdfdoc.PDF_VERSION_DEFAULT,
                                        )
+
+        self._enforceColorSpace = _chooseEnforceColorSpace(enforceColorSpace)
 
         #this only controls whether it prints 'saved ...' - 0 disables
         self._verbosity = verbosity
@@ -326,7 +337,8 @@ class Canvas(textobject._PDFColorSetter):
         font = pdfmetrics.getFont(self._fontname)
         if not font._dynamicFont:
             #set an initial font
-            P('BT %s 12 Tf 14.4 TL ET' % self._doc.getInternalFontName(self._fontname))
+            if font.face.builtIn or not getattr(self,'_drawTextAsPath',False):
+                P('BT %s 12 Tf 14.4 TL ET' % self._doc.getInternalFontName(self._fontname))
         self._preamble = ' '.join(P.__self__)
 
     if not _instanceEscapePDF:
@@ -428,6 +440,12 @@ class Canvas(textobject._PDFColorSetter):
            in the document itself."""
         self._doc.setSubject(subject)
 
+    def setCreator(self, creator):
+        """write a creator into the PDF file that won't automatically display
+           in the document itself. This should be used to name the original app
+           which is passing data into ReportLab, if you wish to name it."""
+        self._doc.setCreator(creator)
+
     def setKeywords(self, keywords):
         """write a list of keywords into the PDF file which shows in document properties.
         Either submit a single string or a list/tuple"""
@@ -479,12 +497,16 @@ class Canvas(textobject._PDFColorSetter):
     def _setFillOverprint(self,v):
         self._extgstate.set(self,'op',v)
 
+    def _setOverprintMask(self,v):
+        self._extgstate.set(self,'OPM',v and 1 or 0)
+
     def _getCmShift(self):
         cM = self._cropMarks
         if cM:
-            mv = max(1,min(self._pagesize[0],self._pagesize[1]))
-            sf = min(1+1./mv,1.01)
-            bw = max(0,getattr(cM,'borderWidth',36)/sf)
+            bleedW = max(0,getattr(cM,'bleedWidth',0))
+            bw = max(0,getattr(cM,'borderWidth',36))
+            if bleedW:
+                bw -= bleedW
             return bw
 
     def showPage(self):
@@ -498,42 +520,52 @@ class Canvas(textobject._PDFColorSetter):
         cM = self._cropMarks
         code = self._code
         if cM:
-            mv = max(1,min(pageWidth,pageHeight))
-            sf = min(1+1./mv,1.01)
-            bw = max(0,getattr(cM,'borderWidth',36)/sf)
+            bw = max(0,getattr(cM,'borderWidth',36))
             if bw:
-                bv = (sf-1)*mv*0.5
-                ml = min(bw,max(0,getattr(cM,'markLength',18)/sf))
+                markLast = getattr(cM,'markLast',1)
+                ml = min(bw,max(0,getattr(cM,'markLength',18)))
                 mw = getattr(cM,'markWidth',0.5)
                 mc = getattr(cM,'markColor',black)
-                mg = bw-ml
+                mg = 2*bw-ml
                 cx0 = len(code)
-                self.saveState()
-                self.scale(sf,sf)
-                self.translate(bw,bw)
-                opw = pageWidth*sf
-                oph = pageHeight*sf
-                pageWidth = 2*bw + pageWidth*sf
-                pageHeight = 2*bw + pageHeight*sf
                 if ml and mc:
                     self.saveState()
                     self.setStrokeColor(mc)
                     self.setLineWidth(mw)
                     self.lines([
-                        (bv,0-bw,bv,ml-bw),
-                        (opw-2*bv,0-bw,opw-2*bv,ml-bw),
-                        (bv,oph+mg,bv,oph+bw),
-                        (opw-2*bv,oph+mg,opw-2*bv,oph+bw),
-                        (-bw,bv,ml-bw,bv),
-                        (opw+mg,bv,opw+bw,bv),
-                        (-bw,oph-2*bv,ml-bw,oph-2*bv),
-                        (opw+mg,oph-2*bv,opw+bw,oph-2*bv),
+                        (bw,0,bw,ml),
+                        (pageWidth+bw,0,pageWidth+bw,ml),
+                        (bw,pageHeight+mg,bw,pageHeight+2*bw),
+                        (pageWidth+bw,pageHeight+mg,pageWidth+bw,pageHeight+2*bw),
+                        (0,bw,ml,bw),
+                        (pageWidth+mg,bw,pageWidth+2*bw,bw),
+                        (0,pageHeight+bw,ml,pageHeight+bw),
+                        (pageWidth+mg,pageHeight+bw,pageWidth+2*bw,pageHeight+bw),
                         ])
                     self.restoreState()
+                    if markLast:
+                        #if the marks are to be drawn after the content
+                        #save the code we just drew for later use
+                        L = code[cx0:]
+                        del code[cx0:]
+                        cx0 = len(code)
+
+                bleedW = max(0,getattr(cM,'bleedWidth',0))
+                self.saveState()
+                self.translate(bw-bleedW,bw-bleedW)
+                if bleedW:
+                    #scale everything
+                    self.scale(1+(2.0*bleedW)/pageWidth,1+(2.0*bleedW)/pageHeight)
+
+                #move our translation/expansion code to the beginning
                 C = code[cx0:]
                 del code[cx0:]
                 code[0:0] = C
                 self.restoreState()
+                if markLast:
+                    code.extend(L)
+                pageWidth = 2*bw + pageWidth
+                pageHeight = 2*bw + pageHeight
 
         code.append(' ')
         page = pdfdoc.PDFPage()
@@ -1402,26 +1434,29 @@ class Canvas(textobject._PDFColorSetter):
         # use PDFTextObject for multi-line text.
         ##################################################
 
-    def drawString(self, x, y, text):
+    def drawString(self, x, y, text, mode=None):
         """Draws a string in the current text styles."""
         #we could inline this for speed if needed
         t = self.beginText(x, y)
+        if mode is not None: t.setTextRenderMode(mode)
         t.textLine(text)
         self.drawText(t)
 
-    def drawRightString(self, x, y, text):
+    def drawRightString(self, x, y, text, mode=None):
         """Draws a string right-aligned with the x coordinate"""
         width = self.stringWidth(text, self._fontname, self._fontsize)
         t = self.beginText(x - width, y)
+        if mode is not None: t.setTextRenderMode(mode)
         t.textLine(text)
         self.drawText(t)
 
-    def drawCentredString(self, x, y, text):
+    def drawCentredString(self, x, y, text,mode=None):
         """Draws a string centred on the x coordinate. 
         
         We're British, dammit, and proud of our spelling!"""
         width = self.stringWidth(text, self._fontname, self._fontsize)
         t = self.beginText(x - 0.5*width, y)
+        if mode is not None: t.setTextRenderMode(mode)
         t.textLine(text)
         self.drawText(t)
 
@@ -1513,8 +1548,9 @@ class Canvas(textobject._PDFColorSetter):
         self._leading = leading
         font = pdfmetrics.getFont(self._fontname)
         if not font._dynamicFont:
-            pdffontname = self._doc.getInternalFontName(psfontname)
-            self._code.append('BT %s %s Tf %s TL ET' % (pdffontname, fp_str(size), fp_str(leading)))
+            if font.face.builtIn or not getattr(self,'_drawTextAsPath',False):
+                pdffontname = self._doc.getInternalFontName(psfontname)
+                self._code.append('BT %s %s Tf %s TL ET' % (pdffontname, fp_str(size), fp_str(leading)))
 
     def setFontSize(self, size=None, leading=None):
         '''Sets font size or leading without knowing the font face'''

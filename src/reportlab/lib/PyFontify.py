@@ -1,6 +1,6 @@
 #Copyright ReportLab Europe Ltd. 2000-2008
 #see license.txt for license details
-__version__=''' $Id: PyFontify.py 3344 2008-12-12 17:01:47Z tim $ '''
+__version__=''' $Id: PyFontify.py 3660 2010-02-08 18:17:33Z damian $ '''
 __doc__="""
 Module to analyze Python source code; for syntax coloring tools.
 
@@ -124,7 +124,7 @@ def fontify(pytext, searchfrom = 0, searchto = None):
         c = match[0]
         if c not in "#'\"":
             # Must have matched a keyword.
-            if start <> searchfrom:
+            if start != searchfrom:
                 # there's still a redundant char before and after it, strip!
                 match = match[1:-1]
                 start = start + 1
@@ -157,4 +157,4 @@ def test(path):
     f.close()
     tags = fontify(text)
     for tag, start, end, sublist in tags:
-        print tag, `text[start:end]`
+        print tag, repr(text[start:end])

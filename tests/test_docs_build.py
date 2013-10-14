@@ -1,4 +1,4 @@
-__version__=''' $Id: test_docs_build.py 3635 2010-01-18 12:18:13Z damian $ '''
+__version__=''' $Id: test_docs_build.py 3694 2010-04-06 12:54:39Z rgbecker $ '''
 """Tests that all manuals can be built.
 """
 from reportlab.lib.testutils import setOutDir,SecureTestCase, printLocation
@@ -24,7 +24,7 @@ class ManualTestCase(SecureTestCase):
             if os.path.isfile('reportlab-reference.pdf'):
                 os.remove('reportlab-reference.pdf')
 
-            os.system("%s genAll.py -s" % sys.executable)
+            os.system('"%s" genAll.py -s' % sys.executable)
 
             assert os.path.isfile('reportlab-userguide.pdf'), 'genAll.py failed to generate reportlab-userguide.pdf!'
             assert os.path.isfile('reportlab-reference.pdf'), 'genAll.py failed to generate reportlab-reference.pdf!'

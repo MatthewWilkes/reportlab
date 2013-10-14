@@ -2,7 +2,7 @@
 #Copyright ReportLab Europe Ltd. 2000-2004
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/lib/logger.py
-__version__=''' $Id: logger.py 3342 2008-12-12 15:55:34Z andy $ '''
+__version__=''' $Id: logger.py 3662 2010-02-09 11:23:58Z rgbecker $ '''
 __doc__="Logging and warning framework, predating Python's logging package"
 from sys import stderr
 class Logger:
@@ -35,7 +35,7 @@ class Logger:
     def write(self,text):
         '''write text to all the destinations'''
         if text[-1]!='\n': text=text+'\n'
-        map(lambda fp,t=text: fp.write(t),self._fps)
+        for fp in self._fps: fp.write(text)
 
     def __call__(self,text):
         self.write(text)
@@ -50,7 +50,7 @@ class WarnOnce:
         self.enabled = 1
 
     def once(self,warning):
-        if not self.uttered.has_key(warning):
+        if warning not in self.uttered:
             if self.enabled: logger.write(self.pfx + warning)
             self.uttered[warning] = 1
 

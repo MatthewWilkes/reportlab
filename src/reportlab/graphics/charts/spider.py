@@ -3,7 +3,7 @@
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/graphics/charts/spider.py
 # spider chart, also known as radar chart
 
-__version__=''' $Id: spider.py 3604 2009-11-27 16:35:29Z meitham $ '''
+__version__=''' $Id: spider.py 3662 2010-02-09 11:23:58Z rgbecker $ '''
 __doc__="""Spider Chart
 
 Normal use shows variation of 5-10 parameters against some 'norm' or target.
@@ -207,7 +207,7 @@ class SpiderChart(PlotArea):
                 text = sty._text
             else:
                 text = fmt % value
-        elif callable(fmt):
+        elif hasattr(fmt,'__call__'):
             text = fmt(value)
         else:
             raise ValueError("Unknown formatter type %s, expected string or function" % fmt)
@@ -343,7 +343,7 @@ class SpiderChart(PlotArea):
                 STRANDS.append(strand)
             rowIdx += 1
 
-        map(g.add,STRANDAREAS+STRANDS+syms+S+labs)
+        for s in (STRANDAREAS+STRANDS+syms+S+labs): g.add(s)
         return g
 
 def sample1():

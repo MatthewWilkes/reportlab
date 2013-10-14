@@ -10,7 +10,7 @@ in based on possible knowledge of the language and desirable 'niceness' of the a
 
 """
 
-__version__=''' $Id: textsplit.py 3239 2008-07-01 13:19:19Z rgbecker $ '''
+__version__=''' $Id: textsplit.py 3662 2010-02-09 11:23:58Z rgbecker $ '''
 
 from types import StringType, UnicodeType
 import unicodedata
@@ -199,5 +199,6 @@ def cjkwrap(text, width, encoding="utf8"):
             ).replace('\0', '').encode(encoding)
 
 if __name__=='__main__':
-    import doctest, textsplit
+    import doctest
+    import textsplit
     doctest.testmod(textsplit)

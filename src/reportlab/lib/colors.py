@@ -1,7 +1,7 @@
 #Copyright ReportLab Europe Ltd. 2000-2010
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/lib/colors.py
-__version__=''' $Id: colors.py 3633 2010-01-14 10:25:37Z rgbecker $ '''
+__version__=''' $Id: colors.py 3780 2010-09-17 13:40:59Z rgbecker $ '''
 __doc__='''Defines standard colour-handling classes and colour names.
 
 We define standard classes to hold colours in two models:  RGB and CMYK.
@@ -82,6 +82,18 @@ class Color:
         D.update(kwds)
         return self.__class__(**D)
 
+    def _lookupName(self,D={}):
+        if not D:
+            for n,v in getAllNamedColors().iteritems():
+                if not isinstance(v,CMYKColor):
+                    t = v.red,v.green,v.blue
+                    if t in D:
+                        n = n+'/'+D[t]
+                    D[t] = n
+        t = self.red,self.green,self.blue
+        return t in D and D[t] or None
+
+
 class CMYKColor(Color):
     """This represents colors using the CMYK (cyan, magenta, yellow, black)
     model commonly used in professional printing.  This is implemented
@@ -95,6 +107,7 @@ class CMYKColor(Color):
     Extra attributes may be attached to the class to support specific ink models,
     and renderers may look for these."""
 
+    _scale = 1.0
     def __init__(self, cyan=0, magenta=0, yellow=0, black=0,
                 spotName=None, density=1, knockout=None, alpha=1):
         """
@@ -131,8 +144,17 @@ class CMYKColor(Color):
             (self.spotName and (',spotName='+repr(self.spotName)) or ''),
             (self.density!=1 and (',density='+fp_str(self.density)) or ''),
             (self.knockout is not None and (',knockout=%d' % self.knockout) or ''),
-            (self.alpha is not None and (',alpha=%d' % self.alpha) or ''),
+            (self.alpha is not None and (',alpha=%s' % self.alpha) or ''),
             )
+
+    def fader(self, n, reverse=False):
+        '''return n colors based on density fade
+        *NB* note this dosen't reach density zero'''
+        scale = self._scale
+        dd = scale/float(n)
+        L = [self.clone(density=scale - i*dd) for i in xrange(n)]
+        if reverse: L.reverse()
+        return L
 
     def __hash__(self):
         return hash( (self.cyan, self.magenta, self.yellow, self.black, self.density, self.spotName, self.alpha) )
@@ -168,11 +190,22 @@ class CMYKColor(Color):
 
     def _density_str(self):
         return fp_str(self.density)
+    _cKwds='cyan magenta yellow black density alpha spotName knockout'.split()
 
-    _cKwds='cyan magenta yellow black density spotName knockout alpha'.split()
+    def _lookupName(self,D={}):
+        if not D:
+            for n,v in getAllNamedColors().iteritems():
+                if isinstance(v,CMYKColor):
+                    t = v.cyan,v.magenta,v.yellow,v.black
+                    if t in D:
+                        n = n+'/'+D[t]
+                    D[t] = n
+        t = self.cyan,self.magenta,self.yellow,self.black
+        return t in D and D[t] or None
 
 class PCMYKColor(CMYKColor):
     '''100 based CMYKColor with density and a spotName; just like Rimas uses'''
+    _scale = 100.
     def __init__(self,cyan,magenta,yellow,black,density=100,spotName=None,knockout=None,alpha=100):
         CMYKColor.__init__(self,cyan/100.,magenta/100.,yellow/100.,black/100.,spotName,density/100.,knockout=knockout,alpha=alpha/100.)
 
@@ -182,12 +215,12 @@ class PCMYKColor(CMYKColor):
             (self.spotName and (',spotName='+repr(self.spotName)) or ''),
             (self.density!=1 and (',density='+fp_str(self.density*100)) or ''),
             (self.knockout is not None and (',knockout=%d' % self.knockout) or ''),
-            (self.alpha is not None and (',alpha=%d' % (self.alpha*100)) or ''),
+            (self.alpha is not None and (',alpha=%s' % (fp_str(self.alpha*100))) or ''),
             )
 
     def cKwds(self):
         K=self._cKwds
-        S=K[:5]
+        S=K[:6]
         for k in self._cKwds:
             v=getattr(self,k)
             if k in S: v*=100
@@ -196,20 +229,23 @@ class PCMYKColor(CMYKColor):
 
 class CMYKColorSep(CMYKColor):
     '''special case color for making separating pdfs'''
+    _scale = 1.
     def __init__(self, cyan=0, magenta=0, yellow=0, black=0,
                 spotName=None, density=1,alpha=1):
         CMYKColor.__init__(self,cyan,magenta,yellow,black,spotName,density,knockout=None,alpha=alpha)
-    _cKwds='cyan magenta yellow black density spotName alpha'.split()
+    _cKwds='cyan magenta yellow black density alpha spotName'.split()
 
 class PCMYKColorSep(PCMYKColor,CMYKColorSep):
     '''special case color for making separating pdfs'''
+    _scale = 100.
     def __init__(self, cyan=0, magenta=0, yellow=0, black=0,
                 spotName=None, density=100, alpha=100):
         PCMYKColor.__init__(self,cyan,magenta,yellow,black,density,spotName,knockout=None,alpha=alpha)
-    _cKwds='cyan magenta yellow black density spotName alpha'.split()
+    _cKwds='cyan magenta yellow black density alpha spotName'.split()
 
-def cmyk2rgb((c,m,y,k),density=1):
+def cmyk2rgb(cmyk,density=1):
     "Convert from a CMYK color tuple to an RGB color tuple"
+    c,m,y,k = cmyk
     # From the Adobe Postscript Ref. Manual 2nd ed.
     r = 1.0 - min(1.0, c + k)
     g = 1.0 - min(1.0, m + k)
@@ -303,7 +339,7 @@ def linearlyInterpolatedColor(c0, c1, x0, x1, x):
     """
 
     if c0.__class__ != c1.__class__:
-        raise ValueError, "Color classes must be the same for interpolation!"
+        raise ValueError("Color classes must be the same for interpolation!\nGot %r and %r'"%(c0,c1))
     if x1<x0:
         x0,x1,c0,c1 = x1,x0,c1,c0 # normalized so x1>x0
     if x<x0-1e-8 or x>x1+1e-8: # fudge factor for numerical problems
@@ -324,13 +360,43 @@ def linearlyInterpolatedColor(c0, c1, x0, x1, x):
         a = c0.alpha+x*(c1.alpha - c0.alpha)/dx
         return Color(r,g,b,alpha=a)
     elif cname == 'CMYKColor':
-        c = c0.cyan+x*(c1.cyan - c0.cyan)/dx
-        m = c0.magenta+x*(c1.magenta - c0.magenta)/dx
-        y = c0.yellow+x*(c1.yellow - c0.yellow)/dx
-        k = c0.black+x*(c1.black - c0.black)/dx
-        d = c0.density+x*(c1.density - c0.density)/dx
-        a = c0.alpha+x*(c1.alpha - c0.alpha)/dx
-        return CMYKColor(c,m,y,k, density=d, alpha=a)
+        if cmykDistance(c0,c1)<1e-8:
+            #colors same do density and preserve spotName if any
+            assert c0.spotName == c1.spotName, "Identical cmyk, but different spotName"
+            c = c0.cyan
+            m = c0.magenta
+            y = c0.yellow
+            k = c0.black
+            d = c0.density+x*(c1.density - c0.density)/dx
+            a = c0.alpha+x*(c1.alpha - c0.alpha)/dx
+            return CMYKColor(c,m,y,k, density=d, spotName=c0.spotName, alpha=a)
+        elif cmykDistance(c0,_CMYK_white)<1e-8:
+            #special c0 is white
+            c = c1.cyan
+            m = c1.magenta
+            y = c1.yellow
+            k = c1.black
+            d = x*c1.density/dx
+            a = x*c1.alpha/dx
+            return CMYKColor(c,m,y,k, density=d, spotName=c1.spotName, alpha=a)
+        elif cmykDistance(c1,_CMYK_white)<1e-8:
+            #special c1 is white
+            c = c0.cyan
+            m = c0.magenta
+            y = c0.yellow
+            k = c0.black
+            d = x*c0.density/dx
+            d = c0.density*(1-x/dx)
+            a = c0.alpha*(1-x/dx)
+            return PCMYKColor(c,m,y,k, density=d, spotName=c0.spotName, alpha=a)
+        else:
+            c = c0.cyan+x*(c1.cyan - c0.cyan)/dx
+            m = c0.magenta+x*(c1.magenta - c0.magenta)/dx
+            y = c0.yellow+x*(c1.yellow - c0.yellow)/dx
+            k = c0.black+x*(c1.black - c0.black)/dx
+            d = c0.density+x*(c1.density - c0.density)/dx
+            a = c0.alpha+x*(c1.alpha - c0.alpha)/dx
+            return CMYKColor(c,m,y,k, density=d, alpha=a)
     elif cname == 'PCMYKColor':
         if cmykDistance(c0,c1)<1e-8:
             #colors same do density and preserve spotName if any
@@ -340,8 +406,9 @@ def linearlyInterpolatedColor(c0, c1, x0, x1, x):
             y = c0.yellow
             k = c0.black
             d = c0.density+x*(c1.density - c0.density)/dx
+            a = c0.alpha+x*(c1.alpha - c0.alpha)/dx
             return PCMYKColor(c*100,m*100,y*100,k*100, density=d*100,
-                              spotName=c0.spotName, alpha=c0.alpha)
+                              spotName=c0.spotName, alpha=100*a)
         elif cmykDistance(c0,_CMYK_white)<1e-8:
             #special c0 is white
             c = c1.cyan
@@ -349,8 +416,9 @@ def linearlyInterpolatedColor(c0, c1, x0, x1, x):
             y = c1.yellow
             k = c1.black
             d = x*c1.density/dx
+            a = x*c1.alpha/dx
             return PCMYKColor(c*100,m*100,y*100,k*100, density=d*100,
-                              spotName=c1.spotName, alpha=c1.alpha)
+                              spotName=c1.spotName, alpha=a*100)
         elif cmykDistance(c1,_CMYK_white)<1e-8:
             #special c1 is white
             c = c0.cyan
@@ -359,8 +427,9 @@ def linearlyInterpolatedColor(c0, c1, x0, x1, x):
             k = c0.black
             d = x*c0.density/dx
             d = c0.density*(1-x/dx)
+            a = c0.alpha*(1-x/dx)
             return PCMYKColor(c*100,m*100,y*100,k*100, density=d*100,
-                              spotName=c0.spotName, alpha=c0.alpha)
+                              spotName=c0.spotName, alpha=a*100)
         else:
             c = c0.cyan+x*(c1.cyan - c0.cyan)/dx
             m = c0.magenta+x*(c1.magenta - c0.magenta)/dx
@@ -368,7 +437,7 @@ def linearlyInterpolatedColor(c0, c1, x0, x1, x):
             k = c0.black+x*(c1.black - c0.black)/dx
             d = c0.density+x*(c1.density - c0.density)/dx
             a = c0.alpha+x*(c1.alpha - c0.alpha)/dx
-            return PCMYKColor(c*100,m*100,y*100,k*100, density=d*100, alpha=a)
+            return PCMYKColor(c*100,m*100,y*100,k*100, density=d*100, alpha=a*100)
     else:
         raise ValueError, "Can't interpolate: Unknown color class %s!" % cname
 
@@ -669,78 +738,119 @@ class cssParse:
         except:
             raise ValueError('bad hue argument value %r in css color %r' % (v,self.s))
 
-    def alphaVal(self,v):
+    def alphaVal(self,v,c=1,n='alpha'):
         try:
-            c = eval(v.strip())
-            if not isinstance(c,(int,float)): raise ValueError
-            return min(1,max(0,c))
+            a = eval(v.strip())
+            if not isinstance(a,(int,float)): raise ValueError
+            return min(c,max(0,a))
         except:
-            raise ValueError('bad alpha argument value %r in css color %r' % (v,self.s))
+            raise ValueError('bad %s argument value %r in css color %r' % (n,v,self.s))
 
     def __call__(self,s):
         s = s.strip()
         hsl = s.startswith('hsl')
-        if not s.startswith('rgb')  and not hsl: return None
+        rgb = s.startswith('rgb')
+        cmyk = s.startswith('cmyk')
+        c = 1
+        if hsl: n = 3
+        if rgb: n = 3
+        if cmyk:
+            n = 4
+        else:
+            cmyk = s.startswith('pcmyk')
+            if cmyk:
+                n = 5
+                c = 100
+        if not (rgb or hsl or cmyk): return None
         self.s = s
-        rgba = s.startswith('rgba') or s.startswith('hsla')
-        n = s[rgba and 4 or 3:].strip()
+        n = s[n:]
+        ha = n.startswith('a')
+        n = n[(ha and 1 or 0):].strip()
         if not n.startswith('(') or not n.endswith(')'):
-            raise ValueError('improperly formatted css color %r' % s)
+            raise ValueError('improperly formatted css style color %r' % s)
         n = n[1:-1].split(',')  #strip parens and split on comma
         a = len(n)
-        if rgba and a!=4 or not rgba and a!=3:
+        b = cmyk and 4 or 3
+        if ha and a!=(b+1) or not ha and a!=b:
             raise ValueError('css color %r has wrong number of components' % s)
-        if rgba:
-            n,a = n[:3],self.alphaVal(n[3])
+        if ha:
+            n,a = n[:b],self.alphaVal(n[b],c)
         else:
-            a = 1
+            a = c
 
-        if hsl:
-            R,G,B= hsl2rgb(self.hueVal(n[0]),self.pcVal(n[1]),self.pcVal(n[2]))
+        if cmyk:
+            C = self.alphaVal(n[0],c,'cyan')
+            M = self.alphaVal(n[1],c,'magenta')
+            Y = self.alphaVal(n[2],c,'yellow')
+            K = self.alphaVal(n[3],c,'black')
+            return (c>1 and PCMYKColor or CMYKColor)(C,M,Y,K,alpha=a)
         else:
-            R,G,B = map('%' in n[0] and self.rgbPcVal or self.rgbVal,n)
+            if hsl:
+                R,G,B= hsl2rgb(self.hueVal(n[0]),self.pcVal(n[1]),self.pcVal(n[2]))
+            else:
+                R,G,B = map('%' in n[0] and self.rgbPcVal or self.rgbVal,n)
 
-        return Color(R,G,B,a)
+            return Color(R,G,B,a)
 
 cssParse=cssParse()
 
-def toColor(arg,default=None):
-    '''try to map an arbitrary arg to a color instance
-    >>> toColor('rgb(128,0,0)')==toColor('rgb(50%,0%,0%)')
-    True
-    >>> toColor('rgb(50%,0%,0%)')!=Color(0.5,0,0,1)
-    True
-    >>> toColor('hsl(0,100%,50%)')==toColor('rgb(255,0,0)')
-    True
-    >>> toColor('hsl(-120,100%,50%)')==toColor('rgb(0,0,255)')
-    True
-    >>> toColor('hsl(120,100%,50%)')==toColor('rgb(0,255,0)')
-    True
-    >>> toColor('rgba(255,0,0,0.5)')==Color(1,0,0,0.5)
-    True
-    '''
-    if isinstance(arg,Color): return arg
-    if isinstance(arg,(tuple,list)):
-        assert 3<=len(arg)<=4, 'Can only convert 3 and 4 sequences to color'
-        assert 0<=min(arg) and max(arg)<=1
-        return len(arg)==3 and Color(arg[0],arg[1],arg[2]) or CMYKColor(arg[0],arg[1],arg[2],arg[3])
-    elif isinstance(arg,basestring):
-        C = cssParse(arg)
-        if C: return C
-        C = getAllNamedColors()
-        s = arg.lower()
-        if C.has_key(s): return C[s]
-        try:
-            return toColor(eval(arg))
-        except:
-            pass
+class toColor:
 
-    try:
-        return HexColor(arg)
-    except:
-        if default is None:
-            raise ValueError('Invalid color value %r' % arg)
-        return default
+    def __init__(self):
+        self.extraColorsNS = {} #used for overriding/adding to existing color names
+                                #make case insensitive if that's your wish
+
+    def setExtraColorsNameSpace(self,NS):
+        self.extraColorsNS = NS
+
+    def __call__(self,arg,default=None):
+        '''try to map an arbitrary arg to a color instance
+        >>> toColor('rgb(128,0,0)')==toColor('rgb(50%,0%,0%)')
+        True
+        >>> toColor('rgb(50%,0%,0%)')!=Color(0.5,0,0,1)
+        True
+        >>> toColor('hsl(0,100%,50%)')==toColor('rgb(255,0,0)')
+        True
+        >>> toColor('hsl(-120,100%,50%)')==toColor('rgb(0,0,255)')
+        True
+        >>> toColor('hsl(120,100%,50%)')==toColor('rgb(0,255,0)')
+        True
+        >>> toColor('rgba(255,0,0,0.5)')==Color(1,0,0,0.5)
+        True
+        >>> toColor('cmyk(1,0,0,0)')==CMYKColor(1,0,0,0)
+        True
+        >>> toColor('pcmyk(100,0,0,0)')==PCMYKColor(100,0,0,0)
+        True
+        >>> toColor('cmyka(1,0,0,0,0.5)')==CMYKColor(1,0,0,0,alpha=0.5)
+        True
+        >>> toColor('pcmyka(100,0,0,0,0.5)')==PCMYKColor(100,0,0,0,alpha=0.5)
+        True
+        '''
+        if isinstance(arg,Color): return arg
+        if isinstance(arg,(tuple,list)):
+            assert 3<=len(arg)<=4, 'Can only convert 3 and 4 sequences to color'
+            assert 0<=min(arg) and max(arg)<=1
+            return len(arg)==3 and Color(arg[0],arg[1],arg[2]) or CMYKColor(arg[0],arg[1],arg[2],arg[3])
+        elif isinstance(arg,basestring):
+            C = cssParse(arg)
+            if C: return C
+            if arg in self.extraColorsNS: return self.extraColorsNS[arg]
+            C = getAllNamedColors()
+            s = arg.lower()
+            if s in C: return C[s]
+            try:
+                return toColor(eval(arg))
+            except:
+                pass
+
+        try:
+            return HexColor(arg)
+        except:
+            if default is None:
+                raise ValueError('Invalid color value %r' % arg)
+            return default
+
+toColor = toColor()
 
 def toColorOrNone(arg,default=None):
     '''as above but allows None as a legal value'''
@@ -777,6 +887,12 @@ def setColors(**kw):
 def Whiter(c,f):
     '''given a color combine with white as c*f w*(1-f) 0<=f<=1'''
     c = toColor(c)
+    if isinstance(c,CMYKColorSep):
+        c = c.clone()
+        if isinstance(c,PCMYKColorSep):
+            c.__class__ = PCMYKColor
+        else:
+            c.__class__ = CMYKColor
     if isinstance(c,PCMYKColor):
         w = _PCMYK_white
     elif isinstance(c,CMYKColor): w = _CMYK_white
@@ -786,6 +902,12 @@ def Whiter(c,f):
 def Blacker(c,f):
     '''given a color combine with black as c*f+b*(1-f) 0<=f<=1'''
     c = toColor(c)
+    if isinstance(c,CMYKColorSep):
+        c = c.clone()
+        if isinstance(c,PCMYKColorSep):
+            c.__class__ = PCMYKColor
+        else:
+            c.__class__ = CMYKColor
     if isinstance(c,PCMYKColor):
         b = _PCMYK_black
     elif isinstance(c,CMYKColor): b = _CMYK_black
@@ -812,6 +934,80 @@ def fade(aSpotColor, percentages):
         out.append(newSpot)
     return out
 
+def _enforceError(kind,c,tc):
+    if isinstance(tc,Color):
+        xtra = tc._lookupName()
+        xtra = xtra and '(%s)'%xtra or ''
+    else:
+        xtra = ''
+    raise ValueError('Non %s color %r%s' % (kind,c,xtra))
+
+def _enforceSEP(c):
+    '''pure separating colors only, this makes black a problem'''
+    tc = toColor(c)
+    if not isinstance(tc,CMYKColorSep):
+        _enforceError('separating',c,tc)
+    return tc
+
+def _enforceSEP_BLACK(c):
+    '''separating + blacks only'''
+    tc = toColor(c)
+    if not isinstance(tc,CMYKColorSep):
+        if isinstance(tc,Color) and tc.red==tc.blue==tc.green: #ahahahah it's a grey
+            tc = _CMYK_black.clone(density=1-tc.red)
+        elif not (isinstance(tc,CMYKColor) and tc.cyan==tc.magenta==tc.yellow==0): #ie some shade of grey
+            _enforceError('separating or black',c,tc)
+    return tc
+
+def _enforceSEP_CMYK(c):
+    '''separating or cmyk only'''
+    tc = toColor(c)
+    if not isinstance(tc,CMYKColorSep):
+        if isinstance(tc,Color) and tc.red==tc.blue==tc.green: #ahahahah it's a grey
+            tc = _CMYK_black.clone(density=1-tc.red)
+        elif not isinstance(tc,CMYKColor):
+            _enforceError('separating or CMYK',c,tc)
+    return tc
+
+def _enforceCMYK(c):
+    '''cmyk outputs only (rgb greys converted)'''
+    tc = toColor(c)
+    if not isinstance(tc,CMYKColor):
+        if isinstance(tc,Color) and tc.red==tc.blue==tc.green: #ahahahah it's a grey
+            tc = _CMYK_black.clone(black=1-tc.red,alpha=tc.alpha)
+        else:
+            _enforceError('CMYK',c,tc)
+    elif isinstance(tc,CMYKColorSep):
+        tc = tc.clone()
+        tc.__class__ = CMYKColor
+    return tc
+
+def _enforceRGB(c):
+    tc = toColor(c)
+    if isinstance(tc,CMYKColor):
+        if tc.cyan==tc.magenta==tc.yellow==0: #ahahahah it's grey
+            v = 1-tc.black*tc.density
+            tc = Color(v,v,v,alpha=tc.alpha)
+        else:
+            _enforceError('RGB',c,tc)
+    return tc
+
+def _chooseEnforceColorSpace(enforceColorSpace):
+    if enforceColorSpace is not None and not callable(enforceColorSpace):
+        if isinstance(enforceColorSpace,basestring): enforceColorSpace=enforceColorSpace.upper()
+        if enforceColorSpace=='CMYK':
+            enforceColorSpace = _enforceCMYK
+        elif enforceColorSpace=='RGB':
+            enforceColorSpace = _enforceRGB
+        elif enforceColorSpace=='SEP':
+            enforceColorSpace = _enforceSEP
+        elif enforceColorSpace=='SEP_BLACK':
+            enforceColorSpace = _enforceSEP_BLACK
+        elif enforceColorSpace=='SEP_CMYK':
+            enforceColorSpace = _enforceSEP_CMYK
+        else:
+            raise ValueError('Invalid value for Canvas argument enforceColorSpace=%r' % enforceColorSpace)
+    return enforceColorSpace
 
 if __name__ == "__main__":
     import doctest

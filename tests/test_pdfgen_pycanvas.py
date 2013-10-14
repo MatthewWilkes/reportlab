@@ -1,7 +1,7 @@
 #!/bin/env python
 #Copyright ReportLab Europe Ltd. 2000-2008
 #see license.txt for license details
-__version__=''' $Id: test_pdfgen_pycanvas.py 3291 2008-09-15 13:21:33Z rgbecker $ '''
+__version__=''' $Id: test_pdfgen_pycanvas.py 3660 2010-02-08 18:17:33Z damian $ '''
 __doc__='testscript for reportlab.pdfgen'
 #tests and documents new low-level canvas and the pycanvas module to output Python source code.
 from reportlab.lib.testutils import setOutDir,makeSuiteForClasses, outputfile, printLocation
@@ -736,7 +736,7 @@ cost to performance.""")
     ### now do stuff for the outline
     #for x in outlinenametree: print x
     #stop
-    #apply(c.setOutlineNames0, tuple(outlinenametree))
+    #c.setOutlineNames0(*outlinenametree)
     return c
 
 

@@ -1,6 +1,6 @@
 #Copyright ReportLab Europe Ltd. 2000-2008
 #see license.txt for license details
-__version__=''' $Id: fodyssey.py 3271 2008-09-04 12:45:58Z rgbecker $ '''
+__version__=''' $Id: fodyssey.py 3660 2010-02-08 18:17:33Z damian $ '''
 __doc__=''
 
 #REPORTLAB_TEST_SCRIPT
@@ -142,7 +142,7 @@ def parseOdyssey(fn):
     t4 = time()
     print "Deleting list of lines took %.4f seconds" %(t4-t3)
     for i in xrange(len(E)):
-        apply(E[i][0],E[i][1:])
+        E[i][0](*E[i][1:])
     t5 = time()
     print "Moving into platypus took %.4f seconds" %(t5-t4)
     del E

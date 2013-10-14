@@ -6,7 +6,7 @@
 #a wedges collection whic lets you customize the group or every individual
 #wedge.
 
-__version__=''' $Id: piecharts.py 3604 2009-11-27 16:35:29Z meitham $ '''
+__version__=''' $Id: piecharts.py 3744 2010-07-19 10:48:38Z rgbecker $ '''
 __doc__="""Basic Pie Chart class.
 
 This permits you to customize and pop out individual wedges;
@@ -415,6 +415,13 @@ def _fixPointerLabels(n,L,x,y,width,height,side=None):
         mul = -1
     return G, mlr[0], mlr[1], mel
 
+class AngleData(float):
+    '''use this to carry the data along with the angle'''
+    def __new__(cls,angle,data):
+        self = float.__new__(cls,angle)
+        self._data = data
+        return self
+
 class Pie(AbstractPieChart):
     _attrMap = AttrMap(BASE=AbstractPieChart,
         data = AttrMapValue(isListOfNumbers, desc='list of numbers defining wedge sizes; need not sum to 1'),
@@ -430,6 +437,7 @@ class Pie(AbstractPieChart):
         orderMode = AttrMapValue(OneOf('fixed','alternate'),advancedUsage=1),
         xradius = AttrMapValue(isNumberOrNone, desc="X direction Radius"),
         yradius = AttrMapValue(isNumberOrNone, desc="Y direction Radius"),
+        wedgeRecord = AttrMapValue(None, desc="callable(wedge,*args,**kwds)",advancedUsage=1),
         )
     other_threshold=None
 
@@ -566,19 +574,21 @@ class Pie(AbstractPieChart):
         if self.sameRadii: xradius=yradius=min(xradius,yradius)
         return PL(centerx,centery,xradius,yradius,G,lu,ru)
 
-    def normalizeData(self):
+    def normalizeData(self,keepData=False):
         data = map(abs,self.data)
         s = self._sum = float(sum(data))
-        if s>1e-8:
-            f = 360./s
-            return [f*x for x in data]
+        if s<=1e-8: s = 0
+        f = 360./s
+        if keepData:
+            return [AngleData(f*x,x) for x in data]
         else:
-            return [0]*len(data)
+            return [f*x for x in data]
 
     def makeAngles(self):
+        wr = getattr(self,'wedgeRecord',None)
         startAngle = self.startAngle % 360
         whichWay = self.direction == "clockwise" and -1 or 1
-        D = [a for a in enumerate(self.normalizeData())]
+        D = [a for a in enumerate(self.normalizeData(keepData=wr))]
         if self.orderMode=='alternate':
             W = [a for a in D if abs(a[1])>=1e-5]
             W.sort(_arcCF)
@@ -605,6 +615,8 @@ class Pie(AbstractPieChart):
                     aa = startAngle,endAngle
             else:
                 aa = startAngle, None
+            if wr:
+                aa = (AngleData(aa[0],angle._data),aa[1])
             startAngle = endAngle
             a((i,aa))
         return A
@@ -613,6 +625,7 @@ class Pie(AbstractPieChart):
         angles = self.makeAngles()
         n = len(angles)
         labels = _fixLabels(self.labels,n)
+        wr = getattr(self,'wedgeRecord',None)
 
         self._seriesCount = n
         styleCount = len(self.slices)
@@ -679,6 +692,8 @@ class Pie(AbstractPieChart):
             theWedge.strokeDashArray = wedgeStyle.strokeDashArray
 
             g_add(theWedge)
+            if wr:
+                wr(theWedge,value=a1._data,label=text)
             if wedgeStyle.label_visible:
                 if text:
                     labelRadius = wedgeStyle.labelRadius
@@ -714,7 +729,7 @@ class Pie(AbstractPieChart):
 
         if checkLabelOverlap and L:
             fixLabelOverlaps(L)
-        map(g_add,L)
+        for l in L: g_add(l)
 
         if not plMode:
             for l in L:
@@ -838,7 +853,7 @@ class LegendedPie(Pie):
                     pass
                 elif type(lNF) is StringType:
                     ldf = lNF % ldf
-                elif callable(lNF):
+                elif hasattr(lNF,'__call__'):
                     ldf = lNF(ldf)
                 else:
                     p = self.legend_names[f]
@@ -849,7 +864,7 @@ class LegendedPie(Pie):
                         pass
                     elif type(lNF) is StringType:
                         ldf = lNF % ldf
-                    elif callable(lNF):
+                    elif hasattr(lNF,'__call__'):
                         ldf = lNF(ldf)
                     else:
                         msg = "Unknown formatter type %s, expected string or function" % self.legendNumberFormat
@@ -1098,17 +1113,16 @@ class Pie3d(Pie):
             #connect to top
             if lo < a0 < hi: angle0 = a0
             if lo < a1 < hi: angle1 = a1
-            if 1:
-                p = ArcPath(strokeColor=strokeColor, fillColor=fillColor,strokeWidth=strokeWidth,strokeLineJoin=1)
-                p.addArc(cx1,cy1,radiusx,angle0,angle1,yradius=radiusy,moveTo=1)
-                p.lineTo(OX(i,angle1,0),OY(i,angle1,0))
-                p.addArc(cx0,cy0,radiusx,angle0,angle1,yradius=radiusy,reverse=1)
-                p.closePath()
-                if angle0<=_3dva and angle1>=_3dva:
-                    rd = 0
-                else:
-                    rd = min(rad_dist(angle0),rad_dist(angle1))
-                S.append((rd,p))
+            p = ArcPath(strokeColor=strokeColor, fillColor=fillColor,strokeWidth=strokeWidth,strokeLineJoin=1)
+            p.addArc(cx1,cy1,radiusx,angle0,angle1,yradius=radiusy,moveTo=1)
+            p.lineTo(OX(i,angle1,0),OY(i,angle1,0))
+            p.addArc(cx0,cy0,radiusx,angle0,angle1,yradius=radiusy,reverse=1)
+            p.closePath()
+            if angle0<=_3dva and angle1>=_3dva:
+                rd = 0
+            else:
+                rd = min(rad_dist(angle0),rad_dist(angle1))
+            S.append((rd,p))
             _fillSide(S,i,lo,strokeColor,strokeWidth,fillColor)
             _fillSide(S,i,hi,strokeColor,strokeWidth,fillColor)
 
@@ -1139,7 +1153,8 @@ class Pie3d(Pie):
         S.sort(lambda a,b: -cmp(a[0],b[0]))
         if checkLabelOverlap and L:
             fixLabelOverlaps(L)
-        map(g.add,map(lambda x:x[1],S)+T+L)
+        for x in ([s[1] for s in S]+T+L):
+            g.add(x)
         return g
 
     def demo(self):

@@ -2,7 +2,7 @@
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/graphics/charts/legends.py
 
-__version__=''' $Id: legends.py 3604 2009-11-27 16:35:29Z meitham $ '''
+__version__=''' $Id: legends.py 3723 2010-06-08 15:46:32Z juraj $ '''
 __doc__="""This will be a collection of legends to be used with charts."""
 
 import copy, operator
@@ -18,6 +18,7 @@ from reportlab.graphics.shapes import Drawing, Group, String, Rect, Line, STATE_
 from reportlab.graphics.charts.areas import PlotArea
 from reportlab.graphics.widgets.markers import uSymbol2Symbol, isSymbol
 from reportlab.lib.utils import isSeqType, find_locals
+from reportlab.graphics.shapes import _baseGFontName
 
 def _transMax(n,A):
     X = n*[0]
@@ -89,6 +90,8 @@ class SubColProperty(PropHolder):
         fillColor = AttrMapValue(isColorOrNone, desc="fontColor"),
         underlines = AttrMapValue(EitherOr((NoneOr(isInstanceOf(Line)),SequenceOf(isInstanceOf(Line),emptyOK=0,lo=0,hi=0x7fffffff))), desc="underline definitions"),
         overlines = AttrMapValue(EitherOr((NoneOr(isInstanceOf(Line)),SequenceOf(isInstanceOf(Line),emptyOK=0,lo=0,hi=0x7fffffff))), desc="overline definitions"),
+        dx = AttrMapValue(isNumber, desc="x offset from default position"),
+        dy = AttrMapValue(isNumber, desc="y offset from default position"),
         )
 
 class LegendCallout:
@@ -102,12 +105,12 @@ class LegendCallout:
         L = find_locals(lambda L: L.get('self',None) is legend and L or None)
         return tuple([getattr(self,a,L[a]) for a in args])
 
-    def __call__(self,legend,g,thisx,y,(col,name)):
-        pass
+    def __call__(self,legend,g,thisx,y,colName):
+        col, name = colName
 
 class LegendSwatchCallout(LegendCallout):
-    def __call__(self,legend,g,thisx,y,i,(col,name),swatch):
-        pass
+    def __call__(self,legend,g,thisx,y,i,colName,swatch):
+        col, name = colName
 
 class LegendColEndCallout(LegendCallout):
     def __call__(self,legend, g, x, xt, y, width, lWidth):
@@ -159,6 +162,8 @@ class Legend(Widget):
         colEndCallout = AttrMapValue(None, desc="a user callout(self,g, x, xt, y,width, lWidth)",advancedUsage=1),
         subCols = AttrMapValue(None,desc="subColumn properties"),
         swatchCallout = AttrMapValue(None, desc="a user swatch callout(self,g,x,y,i,(col,name),swatch)",advancedUsage=1),
+        swdx = AttrMapValue(isNumber, desc="x position adjustment for the swatch"),
+        swdy = AttrMapValue(isNumber, desc="y position adjustment for the swatch"),
         )
 
     def __init__(self):
@@ -178,6 +183,9 @@ class Legend(Widget):
         # Size of swatch rectangle.
         self.dx = 10
         self.dy = 10
+
+        self.swdx = 0
+        self.swdy = 0
 
         # Distance between swatch rectangle and text.
         self.dxTextSpace = 10
@@ -214,7 +222,7 @@ class Legend(Widget):
     def _init_subCols(self):
         sc = self.subCols = TypedPropertyCollection(SubColProperty)
         sc.rpad = 1
-        sc.minWidth = 0
+        sc.dx = sc.dy = sc.minWidth = 0
         sc.align = 'right'
         sc[0].align = 'left' 
 
@@ -321,7 +329,7 @@ class Legend(Widget):
             deltay = max(dy,leading)+self.autoYPadding
         ba = self.boxAnchor
         maxWidth = self._calculateMaxBoundaries(colorNamePairs)
-        nCols = int((n+columnMaximum-1)/columnMaximum)
+        nCols = int((n+columnMaximum-1)/(columnMaximum*1.0))
         xW = dx+dxTextSpace+self.autoXPadding
         variColumn = self.variColumn
         if variColumn:
@@ -378,7 +386,7 @@ class Legend(Widget):
             T = _getLines(name)
             S = []
             aS = S.append
-            j = int(i/columnMaximum)
+            j = int(i/(columnMaximum*1.0))
             jOffs = maxWidth[j]
 
             # thisy+dy/2 = y+leading/2
@@ -403,6 +411,8 @@ class Legend(Widget):
                 x2 = x+jOffs[kk+1]
                 sc = subCols[k,i]
                 anchor = sc.align
+                scdx = sc.dx
+                scdy = sc.dy
                 fN = getattr(sc,'fontName',fontName)
                 fS = getattr(sc,'fontSize',fontSize)
                 fC = getattr(sc,'fillColor',fillColor)
@@ -425,7 +435,7 @@ class Legend(Widget):
                     anchor = 'middle'
                     xoffs = 0.5*(x1+x2)
                 for t in lines:
-                    aS(String(xoffs,y,t,fontName=fN,fontSize=fS,fillColor=fC, textAnchor = anchor))
+                    aS(String(xoffs+scdx,y+scdy,t,fontName=fN,fontSize=fS,fillColor=fC, textAnchor = anchor))
                     y -= fL
                 yd = min(yd,y)
                 y += fL
@@ -457,19 +467,22 @@ class Legend(Widget):
                         strokeColor=dividerColor, strokeWidth=dividerWidth, strokeDashArray=dividerDashArray))
 
             # Make a 'normal' color swatch...
+            swatchX = x + getattr(self,'swdx',0)
+            swatchY = thisy + getattr(self,'swdy',0)
+
             if isAuto(col):
                 chart = getattr(col,'chart',getattr(col,'obj',None))
-                c = chart.makeSwatchSample(getattr(col,'index',i),x,thisy,dx,dy)
+                c = chart.makeSwatchSample(getattr(col,'index',i),swatchX,swatchY,dx,dy)
             elif isinstance(col, colors.Color):
                 if isSymbol(swatchMarker):
-                    c = uSymbol2Symbol(swatchMarker,x+dx/2.,thisy+dy/2.,col)
+                    c = uSymbol2Symbol(swatchMarker,swatchX+dx/2.,swatchY+dy/2.,col)
                 else:
-                    c = self._defaultSwatch(x,thisy,dx,dy,fillColor=col,strokeWidth=strokeWidth,strokeColor=strokeColor)
+                    c = self._defaultSwatch(swatchX,swatchY,dx,dy,fillColor=col,strokeWidth=strokeWidth,strokeColor=strokeColor)
             elif col is not None:
                 try:
                     c = copy.deepcopy(col)
-                    c.x = x
-                    c.y = thisy
+                    c.x = swatchX
+                    c.y = swatchY
                     c.width = dx
                     c.height = dy
                 except:
@@ -481,7 +494,7 @@ class Legend(Widget):
                 g.add(c)
                 if scallout: scallout(self,g,thisx,y0,i,(col,name),c)
 
-            map(g.add,S)
+            for s in S: g.add(s)
             if self.colEndCallout and (i%columnMaximum==lim or i==(n-1)):
                 if alignment == "left":
                     xt = thisx
@@ -520,7 +533,7 @@ class Legend(Widget):
         return d
 
 class TotalAnnotator(LegendColEndCallout):
-    def __init__(self, lText='Total', rText='0.0', fontName='Times-Roman', fontSize=10,
+    def __init__(self, lText='Total', rText='0.0', fontName=_baseGFontName, fontSize=10,
             fillColor=colors.black, strokeWidth=0.5, strokeColor=colors.black, strokeDashArray=None,
             dx=0, dy=0, dly=0, dlx=(0,0)):
         self.lText = lText

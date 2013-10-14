@@ -1,6 +1,6 @@
 #Copyright ReportLab Europe Ltd. 2000-2004
 #see license.txt for license details
-__version__ = '$Id: ch1_intro.py 3644 2010-01-20 10:28:52Z tim $'
+__version__ = '$Id: ch1_intro.py 3790 2010-09-29 14:20:28Z tim $'
 from tools.docco.rl_doc_utils import *
 from reportlab.platypus.tableofcontents import TableOfContents
 from datetime import datetime
@@ -191,31 +191,37 @@ Christian Jacobs,
 Dinu Gherman,
 Eric Johnson, 
 Gary Poster, 
+Germán M. Bravo,
 Hans Brand,
 Henning Vonbargen,
 Hosam Aly,
 Ian Stevens,
 Jeff Bauer,
 Jerome Alet,
-Jorge Godoy, 
+Jerry Casiano,
+Jorge Godoy,
+Keven D Smith,
 Magnus Lie Hetland,
 Marcel Tromp, Ty Sarna
 Marius Gedminas,
 Max M, 
 Michael Egorov,
 Mike Folwell,
-Moshe Wagner, 
+Moshe Wagner,
+Nate Silva,
 Paul McNett, 
 PJACock,
 Publio da Costa Melo,  
 Randolph Bentson,
 Robert Alsina,
-Robert Kern, 
+Robert Hölzl,
+Robert Kern,
 Ron Peleg,
 Simon King,
 Steve Halasz, 
-T Blatter, 
+T Blatter,
 Tim Roberts,
+Tomasz Swiderski,
 Volker Haas,
 Yoann Roman, 
 and many more.""")
@@ -232,18 +238,18 @@ for and Bitstream Inc. for the Vera fonts.""")
 heading2("Installation and Setup")
 
 heading3("A note on available versions")
-disc("""Our website ^http://www.reportlab.com/software/installation/^ will always have up-to-date
+disc("""Our website ^http://www.reportlab.com/^ will always have up-to-date
 information on setups and installations. The latest version of the ReportLab library can be found at
-^http://www.reportlab.com/downloads.html^.  Older versions can be found at ^http://www.reportlab.com/ftp/^.
+^http://www.reportlab.com/software/opensource/rl-toolkit/download/^.  Older versions can be found at ^http://www.reportlab.com/ftp/^.
   Each successive version is stored in both zip
 and tgz format, but the contents are identical apart from line endings.
 Versions are numbered:  $ReportLab_<major_version>_<minor_version>.zip$, 
 $ReportLab_<major_version>_<minor_version>.tgz$ and so on. 
-The latest stable version is $reportlab2.4$ (.zip or .tgz), 
+The latest stable version is $reportlab2.5$ (.zip or .tgz), 
 Daily snapshots of the trunk are available as
 $reportlab-daily-unix.tar.gz$ or $reportlab-daily-win32.zip$.
-  Finally, from version 2.3 onwards, there is also a Windows installer
-available for Python versions 2.3 - 2.6, named $ReportLab-2.x.win32-py2.x.exe$
+  Finally, from version 2.4 onwards, there is also a Windows installer
+available for Python versions 2.4 - 2.7, named $ReportLab-2.x.win32-py2.x.exe$
 """)
 
 heading3("Installation on Windows")
@@ -251,7 +257,7 @@ heading3("Installation on Windows")
 restartList()
 
 list("""First, install Python from $http://www.python.org/.$
-Reportlab 2.x works with Python 2.3 upwards but we recommend to use
+Reportlab 2.x works with Python 2.4 upwards but we recommend to use
 the latest stable version of Python 2.5 or 2.6.  
 After installing, you should be able to run the
 'Python (command line)' option from the Start Menu.

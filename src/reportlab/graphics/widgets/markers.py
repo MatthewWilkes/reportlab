@@ -2,7 +2,7 @@
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/graphics/widgets/markers.py
 
-__version__=''' $Id: markers.py 3345 2008-12-12 17:55:22Z damian $ '''
+__version__=''' $Id: markers.py 3660 2010-02-08 18:17:33Z damian $ '''
 __doc__="""This modules defines a collection of markers used in charts.
 """
 
@@ -223,17 +223,17 @@ def uSymbol2Symbol(uSymbol,x,y,color):
 
 class _isSymbol(Validator):
     def test(self,x):
-        return callable(x) or isinstance(x,Marker) or isinstance(x,Flag) \
+        return hasattr(x,'__call__') or isinstance(x,Marker) or isinstance(x,Flag) \
                 or (type(x)==ClassType and issubclass(x,Widget))
 
 isSymbol = _isSymbol()
 
 def makeMarker(name,**kw):
     if Marker._attrMap['kind'].validate(name):
-        m = apply(Marker,(),kw)
+        m = Marker(**kw)
         m.kind = name
     elif name[-5:]=='_Flag' and Flag._attrMap['kind'].validate(name[:-5]):
-        m = apply(Flag,(),kw)
+        m = Flag(**kw)
         m.kind = name[:-5]
         m.size = 10
     else:

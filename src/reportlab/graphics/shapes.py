@@ -2,7 +2,7 @@
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/graphics/shapes.py
 
-__version__=''' $Id: shapes.py 3613 2009-12-09 18:03:32Z rgbecker $ '''
+__version__=''' $Id: shapes.py 3751 2010-07-30 09:28:28Z rgbecker $ '''
 __doc__='''Core of the graphics library - defines Drawing and Shapes'''
 
 import string, os, sys
@@ -11,7 +11,7 @@ from types import FloatType, IntType, ListType, TupleType, StringType, InstanceT
 from pprint import pprint
 
 from reportlab.platypus import Flowable
-from reportlab.rl_config import shapeChecking, verbose, defaultGraphicsFontName, _unset_
+from reportlab.rl_config import shapeChecking, verbose, defaultGraphicsFontName as _baseGFontName, _unset_
 from reportlab.lib import logger
 from reportlab.lib import colors
 from reportlab.lib.validators import *
@@ -19,6 +19,10 @@ isOpacity = NoneOr(isNumberInRange(0,1))
 from reportlab.lib.attrmap import *
 from reportlab.lib.utils import fp_str
 from reportlab.pdfbase.pdfmetrics import stringWidth
+from reportlab.lib.fonts import tt2ps
+_baseGFontNameB = tt2ps(_baseGFontName,1,0)
+_baseGFontNameI = tt2ps(_baseGFontName,0,1)
+_baseGFontNameBI = tt2ps(_baseGFontName,1,1)
 
 class NotImplementedError(Exception):
     pass
@@ -48,12 +52,13 @@ STATE_DEFAULTS = {   # sensible defaults for all
     'fillOpacity': None,
     'fillOverprint': False,
     'strokeOverprint': False,
+    'overprintMask': 0,
 
     'fillColor': colors.black,   #...or text will be invisible
     #'fillRule': NON_ZERO_WINDING, - these can be done later
 
     'fontSize': 10,
-    'fontName': defaultGraphicsFontName,
+    'fontName': _baseGFontName,
     'textAnchor':  'start' # can be start, middle, end, inherited
     }
 
@@ -251,7 +256,7 @@ class Shape(_SetKeyWordArgs,_DrawTimeResizeable):
         #may need to override this.
         props = {}
         for key, value in self.__dict__.items():
-            if key[0:1] <> '_':
+            if key[0:1] != '_':
                 props[key] = value
         return props
 
@@ -284,8 +289,8 @@ class Shape(_SetKeyWordArgs,_DrawTimeResizeable):
 
         if self._attrMap is not None:
             for key in self.__dict__.keys():
-                if key[0] <> '_':
-                    assert self._attrMap.has_key(key), "Unexpected attribute %s found in %s" % (key, self)
+                if key[0] != '_':
+                    assert key in self._attrMap, "Unexpected attribute %s found in %s" % (key, self)
             for (attr, metavalue) in self._attrMap.items():
                 assert hasattr(self, attr), "Missing attribute %s from %s" % (attr, self)
                 value = getattr(self, attr)
@@ -316,6 +321,7 @@ class Group(Shape):
         contents = AttrMapValue(isListOfShapes,desc="Contained drawable elements"),
         strokeOverprint = AttrMapValue(isBoolean,desc='Turn on stroke overprinting'),
         fillOverprint = AttrMapValue(isBoolean,desc='Turn on fill overprinting',advancedUsage=1),
+        overprintMask = AttrMapValue(isBoolean,desc='overprinting for ordinary CMYK',advancedUsage=1),
         )
 
     def __init__(self, *elements, **keywords):
@@ -498,7 +504,7 @@ def _addObjImport(obj,I,n=None):
     c = obj.__class__
     m = getmodule(c).__name__
     n = n or c.__name__
-    if not I.has_key(m):
+    if m not in I:
         I[m] = [n]
     elif n not in I[m]:
         I[m].append(n)
@@ -606,7 +612,7 @@ class Drawing(Group, Flowable):
             s = s + 'from %s import %s\n' % (m,string.replace(str(o)[1:-1],"'",""))
         s = s + '\nclass %s(_DrawingEditorMixin,Drawing):\n' % n
         s = s + '\tdef __init__(self,width=%s,height=%s,*args,**kw):\n' % (self.width,self.height)
-        s = s + '\t\tapply(Drawing.__init__,(self,width,height)+args,kw)\n'
+        s = s + '\t\tDrawing.__init__(self,width,height,*args,**kw)\n'
         s = s + G
         s = s + '\n\nif __name__=="__main__": #NORUNTESTS\n\t%s().save(formats=[\'pdf\'],outDir=\'.\',fnRoot=None)\n' % n
         return s
@@ -639,7 +645,7 @@ class Drawing(Group, Flowable):
         return self._copy(self.__class__(self.width, self.height))
 
     def asGroup(self,*args,**kw):
-        return self._copy(apply(Group,args,kw))
+        return self._copy(Group(*args,**kw))
 
     def save(self, formats=None, verbose=None, fnRoot=None, outDir=None, title='', **kw):
         """Saves copies of self in desired location and formats.
@@ -648,16 +654,24 @@ class Drawing(Group, Flowable):
         the extra keywords can be of the form
         _renderPM_dpi=96 (which passes dpi=96 to renderPM)
         """
+        genFmt = kw.pop('seqNumber','')
+        if isinstance(genFmt,int):
+            genFmt = '%4d: ' % genFmt
+        else:
+            genFmt = ''
+        genFmt += 'generating %s file %s'
         from reportlab import rl_config
         ext = ''
         if not fnRoot:
             fnRoot = getattr(self,'fileNamePattern',(self.__class__.__name__+'%03d'))
             chartId = getattr(self,'chartId',0)
-            if callable(fnRoot):
+            if hasattr(chartId,'__call__'):
+                chartId = chartId(self)
+            if hasattr(fnRoot,'__call__'):
                 fnRoot = fnRoot(chartId)
             else:
                 try:
-                    fnRoot = fnRoot % getattr(self,'chartId',0)
+                    fnRoot = fnRoot % chartId
                 except TypeError, err:
                     #the exact error message changed from 2.2 to 2.3 so we need to
                     #check a substring
@@ -683,7 +697,7 @@ class Drawing(Group, Flowable):
         if 'pdf' in plotMode:
             from reportlab.graphics import renderPDF
             filename = fnroot+'.pdf'
-            if verbose: print "generating PDF file %s" % filename
+            if verbose: print genFmt % ('PDF',filename)
             renderPDF.drawToFile(self, filename, title, showBoundary=getattr(self,'showBorder',rl_config.showBoundary),**_extraKW(self,'_renderPDF_',**kw))
             ext = ext +  '/.pdf'
             if sys.platform=='mac':
@@ -695,9 +709,17 @@ class Drawing(Group, Flowable):
             if bmFmt in plotMode:
                 from reportlab.graphics import renderPM
                 filename = '%s.%s' % (fnroot,bmFmt)
-                if verbose: print "generating %s file %s" % (bmFmt,filename)
+                if verbose: print genFmt % (bmFmt,filename)
+                dtc = getattr(self,'_drawTimeCollector',None)
+                if dtc:
+                    dtcfmts = getattr(dtc,'formats',[bmFmt])
+                    if bmFmt in dtcfmts and not getattr(dtc,'disabled',0):
+                        dtc.clear()
+                    else:
+                        dtc = None
                 renderPM.drawToFile(self, filename,fmt=bmFmt,showBoundary=getattr(self,'showBorder',rl_config.showBoundary),**_extraKW(self,'_renderPM_',**kw))
                 ext = ext + '/.' + bmFmt
+                if dtc: dtc.save(fnroot)
 
         if 'eps' in plotMode:
             try:
@@ -705,7 +727,7 @@ class Drawing(Group, Flowable):
             except ImportError:
                 from reportlab.graphics import renderPS
             filename = fnroot+'.eps'
-            if verbose: print "generating EPS file %s" % filename
+            if verbose: print genFmt % ('EPS',filename)
             renderPS.drawToFile(self,
                                 filename,
                                 title = fnroot,
@@ -720,7 +742,7 @@ class Drawing(Group, Flowable):
         if 'svg' in plotMode:
             from reportlab.graphics import renderSVG
             filename = fnroot+'.svg'
-            if verbose: print "generating EPS file %s" % filename
+            if verbose: print genFmt % ('SVG',filename)
             renderSVG.drawToFile(self,
                                 filename,
                                 showBoundary=getattr(self,'showBorder',rl_config.showBoundary),**_extraKW(self,'_renderSVG_',**kw))
@@ -729,13 +751,13 @@ class Drawing(Group, Flowable):
         if 'ps' in plotMode:
             from reportlab.graphics import renderPS
             filename = fnroot+'.ps'
-            if verbose: print "generating EPS file %s" % filename
+            if verbose: print genFmt % ('EPS',filename)
             renderPS.drawToFile(self, filename, showBoundary=getattr(self,'showBorder',rl_config.showBoundary),**_extraKW(self,'_renderPS_',**kw))
             ext = ext +  '/.ps'
 
         if 'py' in plotMode:
             filename = fnroot+'.py'
-            if verbose: print "generating py file %s" % filename
+            if verbose: print genFmt % ('py',filename)
             open(filename,'w').write(self._renderPy())
             ext = ext +  '/.py'
 
@@ -798,7 +820,7 @@ class _DrawingEditorMixin:
         '''
         ivc = isValidChild(value)
         if name and hasattr(obj,'_attrMap'):
-            if not obj.__dict__.has_key('_attrMap'):
+            if '_attrMap' not in obj.__dict__:
                 obj._attrMap = obj._attrMap.clone()
             if ivc and validate is None: validate = isValidChild
             obj._attrMap[name] = AttrMapValue(validate,desc)
@@ -824,6 +846,7 @@ class LineShape(Shape):
         strokeDashArray = AttrMapValue(isListOfNumbersOrNone,desc="a sequence of numbers represents on and off, e.g. (2,1)"),
         strokeOpacity = AttrMapValue(isOpacity,desc="The level of transparency of the line, any real number betwen 0 and 1"),
         strokeOverprint = AttrMapValue(isBoolean,desc='Turn on stroke overprinting'),
+        overprintMask = AttrMapValue(isBoolean,desc='overprinting for ordinary CMYK',advancedUsage=1),
         )
 
     def __init__(self, kw):
@@ -863,6 +886,7 @@ class SolidShape(LineShape):
         fillColor = AttrMapValue(isColorOrNone,desc="filling color of the shape, e.g. red"),
         fillOpacity = AttrMapValue(isOpacity,desc="the level of transparency of the color, any real number between 0 and 1"),
         fillOverprint = AttrMapValue(isBoolean,desc='Turn on fill overprinting'),
+        overprintMask = AttrMapValue(isBoolean,desc='overprinting for ordinary CMYK',advancedUsage=1),
         )
 
     def __init__(self, kw):
@@ -889,7 +913,7 @@ def _renderPath(path, drawFuncs):
         nArgs = _PATH_OP_ARG_COUNT[op]
         func = drawFuncs[op]
         j = i + nArgs
-        apply(func, points[i:j])
+        func(*points[i:j])
         i = j
         if op == _CLOSEPATH:
             hadClosePath = hadClosePath + 1
@@ -999,7 +1023,7 @@ def definePath(pathSegs=[],isClipPath=0, dx=0, dy=0, **kw):
     for d,o in (dx,0), (dy,1):
         for i in xrange(o,len(P),2):
             P[i] = P[i]+d
-    return apply(Path,(P,O,isClipPath),kw)
+    return Path(P,O,isClipPath,**kw)
 
 class Rect(SolidShape):
     """Rectangle, possibly with rounded corners."""
@@ -1250,8 +1274,8 @@ class PolyLine(LineShape):
     def getBounds(self):
         return getPointsBounds(self.points)
 
-def numericXShift(tA,text,w,fontName,fontSize,encoding=None):
-    dp = getattr(tA,'_dp','.')
+def numericXShift(tA,text,w,fontName,fontSize,encoding=None,pivotCharacter='.'):
+    dp = getattr(tA,'_dp',pivotCharacter)
     i = text.rfind(dp)
     if i>=0:
         dpOffs = getattr(tA,'_dpLen',0)

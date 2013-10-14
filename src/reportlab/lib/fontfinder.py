@@ -1,6 +1,6 @@
 #Copyright ReportLab Europe Ltd. 2000-2007
 #see license.txt for license details
-__version__=''' $Id: fontfinder.py 3444 2009-02-27 17:06:49Z rgbecker $ '''
+__version__=''' $Id: fontfinder.py 3660 2010-02-08 18:17:33Z damian $ '''
 
 #modification of users/robin/ttflist.py.
 __doc__="""This provides some general-purpose tools for finding fonts.
@@ -144,7 +144,7 @@ class FontFinder:
             fonts = self._fonts
             for font in fonts:
                 fam = font.familyName
-                if self._fontsByFamily.has_key(fam):
+                if fam in self._fontsByFamily:
                     self._fontsByFamily[fam].append(font)
                 else:
                     self._fontsByFamily[fam] = [font]
@@ -179,7 +179,7 @@ class FontFinder:
         for font in self._fonts:
             OK = True
             for (k, v) in kwds.items():
-                if getattr(font, k, None) <> v:
+                if getattr(font, k, None) != v:
                     OK = False
             if OK:
                 selected.append(font)

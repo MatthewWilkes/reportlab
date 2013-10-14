@@ -1,6 +1,6 @@
 #Copyright ReportLab Europe Ltd. 2000-2008
 #see license.txt for license details
-__version__='''$Id: testutils.py 3390 2009-01-22 16:53:05Z rgbecker $'''
+__version__='''$Id: testutils.py 3662 2010-02-09 11:23:58Z rgbecker $'''
 __doc__="""Provides support for the test suite.
 
 The test suite as a whole, and individual tests, need to share
@@ -43,7 +43,7 @@ def setOutDir(name):
             os.makedirs(_OUTDIR)
         except:
             pass
-        map(sys.argv.remove,D)
+        for d in D: sys.argv.remove(d)
     else:
         assert name=='__main__',"setOutDir should only be called in the main script"
         scriptDir=os.path.dirname(sys.argv[0])
@@ -135,7 +135,7 @@ class ExtConfigParser(ConfigParser):
     def getstringlist(self, section, option):
         "Coerce option to a list of strings or return unchanged if that fails."
 
-        value = apply(ConfigParser.get, (self, section, option))
+        value = ConfigParser.get(self, section, option)
 
         # This seems to allow for newlines inside values
         # of the config file, but be careful!!
@@ -200,7 +200,7 @@ class RestrictedGlobDirectoryWalker(GlobDirectoryWalker):
     "An restricted directory tree iterator."
 
     def __init__(self, directory, pattern='*', ignore=None):
-        apply(GlobDirectoryWalker.__init__, (self, directory, pattern))
+        GlobDirectoryWalker.__init__(self, directory, pattern)
 
         if ignore == None:
             ignore = []

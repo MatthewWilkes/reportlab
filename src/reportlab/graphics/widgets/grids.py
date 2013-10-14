@@ -1,7 +1,7 @@
 #Copyright ReportLab Europe Ltd. 2000-2004
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/graphics/widgets/grids.py
-__version__=''' $Id: grids.py 3107 2007-06-30 11:43:41Z rgbecker $ '''
+__version__=''' $Id: grids.py 3660 2010-02-08 18:17:33Z damian $ '''
 
 from reportlab.lib import colors
 from reportlab.lib.validators import isNumber, isColorOrNone, isBoolean, isListOfNumbers, OneOf, isListOfColors, isNumberOrNone
@@ -440,9 +440,11 @@ def rotatedEnclosingRect(P, angle, rect):
     x0, y0 = centroid(P)
     theta = (angle/180.)*pi
     s,c=sin(theta),cos(theta)
-    def parallelAxisDist((x,y),s=s,c=c,x0=x0,y0=y0):
+    def parallelAxisDist(xy,s=s,c=c,x0=x0,y0=y0):
+        x,y = xy
         return (s*(y-y0)+c*(x-x0))
-    def orthogonalAxisDist((x,y),s=s,c=c,x0=x0,y0=y0):
+    def orthogonalAxisDist(xy,s=s,c=c,x0=x0,y0=y0):
+        x,y = xy
         return (c*(y-y0)+s*(x-x0))
     L = map(parallelAxisDist,P)
     L.sort()

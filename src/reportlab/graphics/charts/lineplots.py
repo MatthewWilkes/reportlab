@@ -2,7 +2,7 @@
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/graphics/charts/lineplots.py
 
-__version__=''' $Id: lineplots.py 3631 2010-01-13 10:54:24Z meitham $ '''
+__version__=''' $Id: lineplots.py 3735 2010-07-01 12:24:52Z rgbecker $ '''
 __doc__="""This module defines a very preliminary Line Plot example."""
 
 import string, time
@@ -212,7 +212,7 @@ class LinePlot(AbstractLineChart):
                 labelText = self.lineLabelArray[rowNo][colNo]
             else:
                 labelText = labelFmt % labelValue
-        elif callable(labelFmt):
+        elif hasattr(labelFmt,'__call__'):
             labelText = labelFmt(labelValue)
         else:
             raise ValueError("Unknown formatter type %s, expected string or function"%labelFmt)
@@ -274,7 +274,7 @@ class LinePlot(AbstractLineChart):
             if self.joinedLines:
                 points = []
                 for xy in row:
-                    points = points + [xy[0], xy[1]]
+                    points += [xy[0], xy[1]]
                 if inFill or getattr(rowStyle,'inFill',False):
                     fpoints = [inFillX0,inFillY] + points + [inFillX1,inFillY]
                     filler = getattr(rowStyle, 'filler', None)
@@ -351,21 +351,23 @@ class LinePlot(AbstractLineChart):
         if self.gridFirst:
             xA.makeGrid(g,parent=self,dim=yA.getGridDims)
             yA.makeGrid(g,parent=self,dim=xA.getGridDims)
-        g.add(xA)
-        g.add(yA)
+        g.add(xA.draw())
+        g.add(yA.draw())
+        xAex = xA.visibleAxis and (xA._y,) or ()
+        yAex = yA.visibleAxis and (yA._x,) or ()
         if not self.gridFirst:
             xAdgl = getattr(xA,'drawGridLast',False)
             yAdgl = getattr(yA,'drawGridLast',False)
-            if not xAdgl: xA.makeGrid(g,parent=self,dim=yA.getGridDims)
-            if not yAdgl: yA.makeGrid(g,parent=self,dim=xA.getGridDims)
+            if not xAdgl: xA.makeGrid(g,parent=self,dim=yA.getGridDims,exclude=yAex)
+            if not yAdgl: yA.makeGrid(g,parent=self,dim=xA.getGridDims,exclude=xAex)
         annotations = getattr(self,'annotations',[])
         for a in annotations:
             if getattr(a,'beforeLines',None):
                 g.add(a(self,xA.scale,yA.scale))
         g.add(self.makeLines())
         if not self.gridFirst:
-            if xAdgl: xA.makeGrid(g,parent=self,dim=yA.getGridDims)
-            if yAdgl: yA.makeGrid(g,parent=self,dim=xA.getGridDims)
+            if xAdgl: xA.makeGrid(g,parent=self,dim=yA.getGridDims,exclude=yAex)
+            if yAdgl: yA.makeGrid(g,parent=self,dim=xA.getGridDims,exclude=xAex)
         for a in annotations:
             if not getattr(a,'beforeLines',None):
                 g.add(a(self,xA.scale,yA.scale))
@@ -527,7 +529,7 @@ class LinePlot3D(LinePlot):
 
         F.sort()
         g = Group()
-        map(lambda x,a=g.add: a(x[-1]),F.value())
+        for v in F.value(): g.add(v[-1])
         return g
 
 _monthlyIndexData = [[(19971202, 100.0),

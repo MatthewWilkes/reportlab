@@ -2,7 +2,7 @@
 #see license.txt for license details
 """Tests ability to cycle through multiple page templates
 """
-__version__='''$Id: test_platypus_leftright.py 3288 2008-09-15 11:03:17Z rgbecker $'''
+__version__='''$Id: test_platypus_leftright.py 3660 2010-02-08 18:17:33Z damian $'''
 from reportlab.lib.testutils import setOutDir,makeSuiteForClasses, outputfile, printLocation
 setOutDir(__name__)
 import sys, os, time
@@ -73,7 +73,7 @@ class MyDocTemplate(BaseDocTemplate):
     _invalidInitArgs = ('pageTemplates',)
 
     def __init__(self, filename, **kw):
-        apply(BaseDocTemplate.__init__, (self, filename), kw)
+        BaseDocTemplate.__init__(self, filename, **kw)
         self.addPageTemplates(
             [
              PageTemplate(id='plain',

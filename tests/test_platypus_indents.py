@@ -2,7 +2,7 @@
 #see license.txt for license details
 """Tests for context-dependent indentation
 """
-__version__='''$Id: test_platypus_indents.py 3288 2008-09-15 11:03:17Z rgbecker $'''
+__version__='''$Id: test_platypus_indents.py 3660 2010-02-08 18:17:33Z damian $'''
 from reportlab.lib.testutils import setOutDir,makeSuiteForClasses, outputfile, printLocation
 setOutDir(__name__)
 import sys, os, random
@@ -49,7 +49,7 @@ class MyDocTemplate(BaseDocTemplate):
     def __init__(self, filename, **kw):
         frame1 = Frame(2.5*cm, 2.5*cm, 15*cm, 25*cm, id='F1')
         self.allowSplitting = 0
-        apply(BaseDocTemplate.__init__, (self, filename), kw)
+        BaseDocTemplate.__init__(self, filename, **kw)
         template1 = PageTemplate('normal', [frame1], myMainPageFrame)
 
         frame2 = Frame(2.5*cm, 16*cm, 15*cm, 10*cm, id='F2', showBoundary=1)

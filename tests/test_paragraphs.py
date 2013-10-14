@@ -1,7 +1,7 @@
 #Copyright ReportLab Europe Ltd. 2000-2004
 #see license.txt for license details
 # tests some paragraph styles
-__version__='''$Id: test_paragraphs.py 3288 2008-09-15 11:03:17Z rgbecker $'''
+__version__='''$Id: test_paragraphs.py 3733 2010-06-29 09:01:19Z rgbecker $'''
 from reportlab.lib.testutils import setOutDir,makeSuiteForClasses, outputfile, printLocation
 setOutDir(__name__)
 import unittest
@@ -67,6 +67,9 @@ class ParagraphTestCase(unittest.TestCase):
         story.append(
             Paragraph("This is a normal paragraph. "
                       + randomText(), styNormal))
+        story.append(
+            Paragraph("There follows a paragraph with only \"&lt;br/&gt\"", styNormal))
+        story.append(Paragraph("<br/>", styNormal))
         story.append(
             Paragraph("This has 12 points space before and after, set in the style. "
                       + randomText(), stySpaced))

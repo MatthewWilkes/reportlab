@@ -1,7 +1,7 @@
 #!/bin/env python
 #Copyright ReportLab Europe Ltd. 2000-2004
 #see license.txt for license details
-__version__=''' $Id: test_platypus_tables.py 3477 2009-05-22 22:09:28Z andy $ '''
+__version__=''' $Id: test_platypus_tables.py 3796 2010-10-01 09:08:46Z rgbecker $ '''
 __doc__='Test script for reportlab.tables'
 from reportlab.lib.testutils import setOutDir,makeSuiteForClasses, outputfile, printLocation
 setOutDir(__name__)
@@ -540,7 +540,7 @@ LIST_STYLE = TableStyle(
     lst.append(Paragraph("Illustrating splits with spans and repeatRows: nosplit", styleSheet['BodyText']))
     lst.append(t)
     lst.append(Spacer(0,6))
-    if  0:
+    if  1:
         lst.append(Paragraph("Illustrating splits with spans and repeatRows: split(4in,30)", styleSheet['BodyText']))
         for s in t.split(4*inch,30):
             lst.append(s)
@@ -552,7 +552,6 @@ LIST_STYLE = TableStyle(
             lst.append(Spacer(0,6))
     lst.append(Paragraph("Illustrating splits with spans and repeatRows: split(4in,56)", styleSheet['BodyText']))
     lst.append(Spacer(0,6))
-    t=Table(data,style=sty,repeatRows=2)
     for s in t.split(4*inch,56):
         lst.append(s)
         lst.append(Spacer(0,6))
@@ -754,6 +753,7 @@ LIST_STYLE = TableStyle(
         ]))
 
     lst.append(t)
+    lst.append(PageBreak())
 
     #Volker Haas' example extended
     #the optimal row heights are the solution of an LP similar to

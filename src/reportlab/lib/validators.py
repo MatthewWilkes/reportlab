@@ -1,7 +1,7 @@
 #Copyright ReportLab Europe Ltd. 2000-2004
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/lib/validators.py
-__version__=''' $Id: validators.py 3550 2009-09-11 16:56:43Z rgbecker $ '''
+__version__=''' $Id: validators.py 3752 2010-08-05 09:22:11Z rgbecker $ '''
 __doc__="""Standard verifying functions used by attrmap."""
 
 import string, sys, codecs
@@ -166,6 +166,16 @@ class _isColorOrNone(Validator):
         if x is None: return True
         return isColor(x)
 
+from reportlab.lib.normalDate import NormalDate
+class _isNormalDate(Validator):
+    def test(self,x):
+        if isinstance(x,NormalDate):
+            return True
+        return x is not None and self.normalizeTest(x)
+
+    def normalize(self,x):
+        return NormalDate(x)
+
 class _isValidChild(Validator):
     "ValidChild validator class."
     def test(self, x):
@@ -182,7 +192,7 @@ class _isValidChildOrNone(_isValidChild):
 
 class _isCallable(Validator):
     def test(self, x):
-        return callable(x)
+        return hasattr(x,'__call__')
 
 class OneOf(Validator):
     """Make validator functions for list of choices.
@@ -272,7 +282,7 @@ class matchesPattern(Validator):
             text = x
         else:
             text = str(x)
-        return (self._pattern.match(text) <> None)
+        return (self._pattern.match(text) != None)
 
 class DerivedValue:
     """This is used for magic values which work themselves out.
@@ -343,3 +353,4 @@ isCallable = _isCallable()
 isStringOrCallable=EitherOr((isString,isCallable),'isStringOrCallable')
 isStringOrCallableOrNone=NoneOr(isStringOrCallable,'isStringOrCallableNone')
 isStringOrNone=NoneOr(isString,'isStringOrNone')
+isNormalDate=_isNormalDate()

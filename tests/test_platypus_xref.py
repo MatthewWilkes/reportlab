@@ -2,7 +2,7 @@
 #see license.txt for license details
 """Test long documents with indexes, tables and cross-references
 """
-__version__='''$Id: test_platypus_xref.py 3306 2008-10-13 15:20:11Z rgbecker $'''
+__version__='''$Id: test_platypus_xref.py 3660 2010-02-08 18:17:33Z damian $'''
 from reportlab.lib.testutils import setOutDir,makeSuiteForClasses, outputfile, printLocation
 setOutDir(__name__)
 import sys, os, time
@@ -36,7 +36,7 @@ class MyDocTemplate(BaseDocTemplate):
         frame1 = Frame(2.5*cm, 2.5*cm, 16*cm, 25*cm, id='Frame1')
         self.allowSplitting = 0
         self.showBoundary = 1
-        apply(BaseDocTemplate.__init__, (self, filename), kw)
+        BaseDocTemplate.__init__(self, filename, **kw)
         template = PageTemplate('normal', [frame1], myMainPageFrame)
         self.addPageTemplates(template)
 

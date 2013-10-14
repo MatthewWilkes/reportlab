@@ -1,7 +1,7 @@
 #Copyright ReportLab Europe Ltd. 2000-2004
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/graphics/renderPS.py
-__version__=''' $Id: renderPS.py 3550 2009-09-11 16:56:43Z rgbecker $ '''
+__version__=''' $Id: renderPS.py 3695 2010-04-06 16:16:27Z rgbecker $ '''
 __doc__="""Render drawing objects in Postscript"""
 
 import string, types
@@ -592,7 +592,7 @@ class PSCanvas:
         outstream = getStringIO(hex_encoded)
 
         dataline = outstream.read(78)
-        while dataline <> "":
+        while dataline != "":
             self.code_append(dataline)
             dataline= outstream.read(78)
         self.code_append('% end of image data') # for clarity
@@ -662,7 +662,7 @@ class PSCanvas:
         outstream = getStringIO(hex_encoded)
 
         dataline = outstream.read(78)
-        while dataline <> "":
+        while dataline != "":
             self.code_append(dataline)
             dataline= outstream.read(78)
         self.code_append('> % end of image data') # > is EOD for hex encoded filterfor clarity
@@ -706,7 +706,7 @@ class _PSRenderer(Renderer):
     def drawNode(self, node):
         """This is the recursive method called for each node
         in the tree"""
-        self._canvas.comment('begin node %s'%`node`)
+        self._canvas.comment('begin node %r'%node)
         color = self._canvas._color
         if not (isinstance(node, Path) and node.isClipPath):
             self._canvas.saveState()
@@ -722,12 +722,12 @@ class _PSRenderer(Renderer):
         rDeltas = self._tracker.pop()
         if not (isinstance(node, Path) and node.isClipPath):
             self._canvas.restoreState()
-        self._canvas.comment('end node %s'%`node`)
+        self._canvas.comment('end node %r'%node)
         self._canvas._color = color
 
         #restore things we might have lost (without actually doing anything).
         for k, v in rDeltas.items():
-            if self._restores.has_key(k):
+            if k in self._restores:
                 setattr(self._canvas,self._restores[k],v)
 
 ##  _restores = {'stroke':'_stroke','stroke_width': '_lineWidth','stroke_linecap':'_lineCap',
@@ -799,7 +799,7 @@ class _PSRenderer(Renderer):
                 elif text_anchor=='middle':
                     x -= textLen/2
                 elif text_anchor=='numeric':
-                    x -= numericXShift(text_anchor,text,textLen,font,fontSize)
+                    x -= numericXShift(text_anchor,text,textLen,font,fontSize,encoding='winansi')
                 else:
                     raise ValueError, 'bad value for text_anchor '+str(text_anchor)
             self._canvas.drawString(x,y,text)
