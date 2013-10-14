@@ -1,9 +1,9 @@
 #!/bin/env python
-#Copyright ReportLab Europe Ltd. 2000-2004
+#Copyright ReportLab Europe Ltd. 2000-2012
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/lib/randomtext.py
 
-__version__=''' $Id: randomtext.py 3342 2008-12-12 15:55:34Z andy $ '''
+__version__=''' $Id: randomtext.py 3959 2012-09-27 14:39:39Z robin $ '''
 
 ###############################################################################
 #   generates so-called 'Greek Text' for use in filling documents.
@@ -221,6 +221,13 @@ leadins=[
     "Let us continue to suppose that",
     "Notice, incidentally, that",
     "A majority  of informed linguistic specialists agree that",
+    "There is also a different approach to the [unification] problem,",
+    "This approach divorces the cognitive sciences from a biological setting,",
+    "The approach relies on the \"Turing Test,\" devised by mathematician Alan Turing,",
+    "Adopting this approach,",
+    "There is no fact, no meaningful question to be answered,",
+    "Another superficial similarity is the interest in simulation of behavior,",
+    "A lot of sophistication has been developed about the utilization of machines for complex purposes,",
     ]
  
 subjects = [
@@ -324,7 +331,7 @@ def randomText(theme=STARTUP, sentences=5):
     if type(theme)==type(''):
         if theme.lower()=='chomsky': return chomsky(sentences)
         elif theme.upper() in ('STARTUP','COMPUTERS','BLAH','BUZZWORD','STARTREK','PRINTING','PYTHON'):
-            theme = globals()[theme]
+            theme = globals()[theme.upper()]
         else:
             raise ValueError('Unknown theme "%s"' % theme)
 
@@ -346,4 +353,19 @@ def randomText(theme=STARTUP, sentences=5):
     return output
 
 if __name__=='__main__':
-    print chomsky(5)
+    import sys
+    argv = sys.argv[1:]
+    if argv:
+        theme = argv.pop(0)
+        if argv:
+            sentences = int(argv.pop(0))
+        else:
+            sentences = 5
+        try:
+            print randomText(theme,sentences)
+        except:
+            print>>sys.stderr,"Usage: randomtext.py [theme [#sentences]]"
+            print>>sys.stderr," theme in chomsky|STARTUP|COMPUTERS|BLAH|BUZZWORD|STARTREK|PRINTING|PYTHON"
+            raise
+    else:
+        print chomsky(5)

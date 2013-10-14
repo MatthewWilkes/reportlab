@@ -1,7 +1,7 @@
-#Copyright ReportLab Europe Ltd. 2000-2004
+#Copyright ReportLab Europe Ltd. 2000-2012
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/pdfgen/textobject.py
-__version__=''' $Id: textobject.py 3778 2010-09-17 11:24:04Z rgbecker $ '''
+__version__=''' $Id: textobject.py 3959 2012-09-27 14:39:39Z robin $ '''
 __doc__="""
 PDFTextObject is an efficient way to add text to a Canvas. Do not
 instantiate directly, obtain one from the Canvas instead.
@@ -179,10 +179,14 @@ class PDFTextObject(_PDFColorSetter):
         font = pdfmetrics.getFont(self._fontname)
         self._curSubset = -1
         self.setTextOrigin(x, y)
+        self._textRenderMode = 0
+        self._clipping = 0
 
     def getCode(self):
         "pack onto one line; used internally"
         self._code.append('ET')
+        if self._clipping:
+            self._code.append('%d Tr' % (self._textRenderMode^4))
         return string.join(self._code, ' ')
 
     def setTextOrigin(self, x, y):
@@ -336,11 +340,18 @@ class PDFTextObject(_PDFColorSetter):
         4 = Fill text and add to clipping path
         5 = Stroke text and add to clipping path
         6 = Fill then stroke and add to clipping path
-        7 = Add to clipping path"""
+        7 = Add to clipping path
+
+        after we start clipping we mustn't change the mode back until after the ET
+        """
 
         assert mode in (0,1,2,3,4,5,6,7), "mode must be in (0,1,2,3,4,5,6,7)"
-        self._textRenderMode = mode
-        self._code.append('%d Tr' % mode)
+        if (mode & 4)!=self._clipping:
+            mode |= 4
+            self._clipping = mode & 4
+        if self._textRenderMode!=mode:
+            self._textRenderMode = mode
+            self._code.append('%d Tr' % mode)
 
     def setRise(self, rise):
         "Move text baseline up or down to allow superscrip/subscripts"

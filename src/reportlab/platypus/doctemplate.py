@@ -1,8 +1,8 @@
-#Copyright ReportLab Europe Ltd. 2000-2004
+#Copyright ReportLab Europe Ltd. 2000-2012
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/platypus/doctemplate.py
 
-__version__=''' $Id: doctemplate.py 3791 2010-09-29 19:37:05Z andy $ '''
+__version__=''' $Id: doctemplate.py 3959 2012-09-27 14:39:39Z robin $ '''
 
 __doc__="""
 This module contains the core structure of platypus.
@@ -57,6 +57,7 @@ class LayoutError(Exception):
     pass
 
 def _fSizeString(f):
+    #used to get size during error messages
     w=getattr(f,'width',None)
     if w is None:
         w=getattr(f,'_width',None)
@@ -64,10 +65,15 @@ def _fSizeString(f):
     h=getattr(f,'height',None)
     if h is None:
         h=getattr(f,'_height',None)
+    #tables in particular may have some nasty large culprit
+    if hasattr(f, '_culprit'):
+        c = ', %s, ' % f._culprit()
+    else:
+        c = ''
     if w is not None or h is not None:
         if w is None: w='???'
         if h is None: h='???'
-        return '(%s x %s)' % (w,h)
+        return '(%s x %s)%s' % (w,h,c)
     return ''
 
 def _doNothing(canvas, doc):
@@ -244,7 +250,7 @@ class PageTemplate:
     derived classes can also implement beforeDrawPage and afterDrawPage if they want
     """
     def __init__(self,id=None,frames=[],onPage=_doNothing, onPageEnd=_doNothing,
-                 pagesize=None):
+                 pagesize=None, autoNextPageTemplate=None):
         frames = frames or []
         if type(frames) not in (ListType,TupleType): frames = [frames]
         assert filter(lambda x: not isinstance(x,Frame), frames)==[], "frames argument error"
@@ -253,6 +259,7 @@ class PageTemplate:
         self.onPage = onPage
         self.onPageEnd = onPageEnd
         self.pagesize = pagesize
+        self.autoNextPageTemplate = autoNextPageTemplate
 
     def beforeDrawPage(self,canv,doc):
         """Override this if you want additional functionality or prefer
@@ -549,6 +556,8 @@ class BaseDocTemplate:
             hang a page begin
         '''
         self._removeVars(('page','frame'))
+        self._leftExtraIndent = self.frame._leftExtraIndent
+        self._rightExtraIndent = self.frame._rightExtraIndent
         #detect infinite loops...
         if self._curPageFlowableCount == 0:
             self._emptyPages += 1
@@ -577,6 +586,9 @@ class BaseDocTemplate:
             elif hasattr(self,'_nextPageTemplateIndex'):
                 self.pageTemplate = self.pageTemplates[self._nextPageTemplateIndex]
                 del self._nextPageTemplateIndex
+            elif self.pageTemplate.autoNextPageTemplate:
+                self.handle_nextPageTemplate(self.pageTemplate.autoNextPageTemplate)
+                self.pageTemplate = self.pageTemplates[self._nextPageTemplateIndex]
             if self._emptyPages==0:
                 pass    #store good state here
         self._hanging.append(PageBegin)
@@ -773,9 +785,9 @@ class BaseDocTemplate:
                 else:
                     n = 0
                 if n:
-                    if not isinstance(S[0],(PageBreak,SlowPageBreak,ActionFlowable)):
+                    if not isinstance(S[0],(PageBreak,SlowPageBreak,ActionFlowable,DDIndenter)):
                         if not frame.add(S[0], canv, trySplit=0):
-                            ident = "Splitting error(n==%d) on page %d in\n%s" % (n,self.page,self._fIdent(f,60,frame))
+                            ident = "Splitting error(n==%d) on page %d in\n%s\nS[0]=%s" % (n,self.page,self._fIdent(f,60,frame),self._fIdent(S[0],60,frame))
                             #leave to keep apart from the raise
                             raise LayoutError(ident)
                         self._curPageFlowableCount += 1

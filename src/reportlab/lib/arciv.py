@@ -1,9 +1,9 @@
-#copyright ReportLab Europe Limited. 2000-2006
+#copyright ReportLab Europe Limited. 2000-2012
 #see license.txt for license details
 '''
 Arciv Stream  ciphering
 '''
-__version__=''' $Id: arciv.py 3386 2009-01-22 14:21:27Z rgbecker $ '''
+__version__=''' $Id: arciv.py 3959 2012-09-27 14:39:39Z robin $ '''
 from types import StringType
 class ArcIV:
 	'''
