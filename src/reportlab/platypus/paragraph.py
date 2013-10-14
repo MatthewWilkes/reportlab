@@ -961,8 +961,19 @@ class Paragraph(Flowable):
             #use Asian text wrap algorithm to break characters
             blPara = self.breakLinesCJK([first_line_width, later_widths])
         else:
-            blPara = self.breakLines([first_line_width, later_widths])
-        self.blPara = blPara
+            best_fill = 0
+            picked = None
+            for spacing in range(90, 70, -5):
+                blPara = self.breakLines([first_line_width, later_widths], spacing=spacing/100.0)
+                try:
+                    line_fill = blPara.lines[-1][0],
+                except IndexError:
+                    picked = spacing
+                    break
+                if line_fill > best_fill and (len(blPara.lines) * style.leading) <= availHeight:
+                    picked = spacing
+                    best_fill = line_fill
+        self.blPara = self.breakLines([first_line_width, later_widths], spacing=picked/100.0)
         autoLeading = getattr(self,'autoLeading',getattr(style,'autoLeading',''))
         leading = style.leading
         if blPara.kind==1:
@@ -1092,7 +1103,7 @@ class Paragraph(Flowable):
         #so not doing it here makes it easier to switch.
         self.drawPara(self.debug)
 
-    def breakLines(self, width):
+    def breakLines(self, width, spacing=1.0):
         """
         Returns a broken line structure. There are two cases
 
@@ -1162,7 +1173,7 @@ class Paragraph(Flowable):
                 #this underscores my feeling that Unicode throughout would be easier!
                 wordWidth = stringWidth(word, fontName, fontSize, self.encoding)
                 newWidth = currentWidth + spaceWidth + wordWidth
-                if newWidth <= maxWidth or not len(cLine):
+                if newWidth <= (maxWidth*spacing) or not len(cLine):
                     # fit one more on this line
                     cLine.append(word)
                     currentWidth = newWidth
