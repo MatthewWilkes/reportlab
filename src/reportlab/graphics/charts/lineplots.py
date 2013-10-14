@@ -2,7 +2,7 @@
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/graphics/charts/lineplots.py
 
-__version__=''' $Id: lineplots.py 3345 2008-12-12 17:55:22Z damian $ '''
+__version__=''' $Id: lineplots.py 3631 2010-01-13 10:54:24Z meitham $ '''
 __doc__="""This module defines a very preliminary Line Plot example."""
 
 import string, time
@@ -26,11 +26,11 @@ class LinePlotProperties(PropHolder):
         strokeWidth = AttrMapValue(isNumber, desc='Width of a line.'),
         strokeColor = AttrMapValue(isColorOrNone, desc='Color of a line.'),
         strokeDashArray = AttrMapValue(isListOfNumbersOrNone, desc='Dash array of a line.'),
-        symbol = AttrMapValue(None, desc='Widget placed at data points.'),
-        shader = AttrMapValue(None, desc='Shader Class.'),
-        filler = AttrMapValue(None, desc='Filler Class.'),
+        symbol = AttrMapValue(None, desc='Widget placed at data points.',advancedUsage=1),
+        shader = AttrMapValue(None, desc='Shader Class.',advancedUsage=1),
+        filler = AttrMapValue(None, desc='Filler Class.',advancedUsage=1),
         name = AttrMapValue(isStringOrNone, desc='Name of the line.'),
-        inFill = AttrMapValue(isBoolean, desc='If true flood fill to x axis'),
+        inFill = AttrMapValue(isBoolean, desc='If true flood fill to x axis',advancedUsage=1),
         )
 
 class Shader(_SetKeyWordArgs):
@@ -79,8 +79,8 @@ class LinePlot(AbstractLineChart):
     X and Y versions of this class).
     """
     _attrMap = AttrMap(BASE=PlotArea,
-        reversePlotOrder = AttrMapValue(isBoolean, desc='If true reverse plot order.'),
-        lineLabelNudge = AttrMapValue(isNumber, desc='Distance between a data point and its label.'),
+        reversePlotOrder = AttrMapValue(isBoolean, desc='If true reverse plot order.',advancedUsage=1),
+        lineLabelNudge = AttrMapValue(isNumber, desc='Distance between a data point and its label.',advancedUsage=1),
         lineLabels = AttrMapValue(None, desc='Handle to the list of data point labels.'),
         lineLabelFormat = AttrMapValue(None, desc='Formatting string or function used for data point labels.'),
         lineLabelArray = AttrMapValue(None, desc='explicit array of line label values, must match size of data if present.'),
@@ -91,9 +91,9 @@ class LinePlot(AbstractLineChart):
         xValueAxis = AttrMapValue(None, desc='Handle of the x axis.'),
         yValueAxis = AttrMapValue(None, desc='Handle of the y axis.'),
         data = AttrMapValue(None, desc='Data to be plotted, list of (lists of) x/y tuples.'),
-        annotations = AttrMapValue(None, desc='list of callables, will be called with self, xscale, yscale.'),
-        behindAxes = AttrMapValue(isBoolean, desc='If true use separate line group.'),
-        gridFirst = AttrMapValue(isBoolean, desc='If true use draw grids before axes.'),
+        annotations = AttrMapValue(None, desc='list of callables, will be called with self, xscale, yscale.',advancedUsage=1),
+        behindAxes = AttrMapValue(isBoolean, desc='If true use separate line group.',advancedUsage=1),
+        gridFirst = AttrMapValue(isBoolean, desc='If true use draw grids before axes.',advancedUsage=1),
         )
 
     def __init__(self):
@@ -212,16 +212,14 @@ class LinePlot(AbstractLineChart):
                 labelText = self.lineLabelArray[rowNo][colNo]
             else:
                 labelText = labelFmt % labelValue
-        elif isinstance(labelFmt, Formatter):
-            labelText = labelFmt(labelValue)
         elif callable(labelFmt):
             labelText = labelFmt(labelValue)
         else:
-            msg = "Unknown formatter type %s, expected string or function"
-            raise Exception, msg % labelFmt
+            raise ValueError("Unknown formatter type %s, expected string or function"%labelFmt)
 
         if labelText:
             label = self.lineLabels[(rowNo, colNo)]
+            if not label.visible: return
             #hack to make sure labels are outside the bar
             if y > 0:
                 label.setOrigin(x, y + self.lineLabelNudge)
@@ -262,7 +260,7 @@ class LinePlot(AbstractLineChart):
         for rowNo in P:
             row = self._positions[rowNo]
             rowStyle = self.lines[rowNo % styleCount]
-            rowColor = rowStyle.strokeColor
+            rowColor = getattr(rowStyle,'strokeColor',None)
             dash = getattr(rowStyle, 'strokeDashArray', None)
 
             if hasattr(rowStyle, 'strokeWidth'):
@@ -356,17 +354,38 @@ class LinePlot(AbstractLineChart):
         g.add(xA)
         g.add(yA)
         if not self.gridFirst:
-            xA.makeGrid(g,parent=self,dim=yA.getGridDims)
-            yA.makeGrid(g,parent=self,dim=xA.getGridDims)
+            xAdgl = getattr(xA,'drawGridLast',False)
+            yAdgl = getattr(yA,'drawGridLast',False)
+            if not xAdgl: xA.makeGrid(g,parent=self,dim=yA.getGridDims)
+            if not yAdgl: yA.makeGrid(g,parent=self,dim=xA.getGridDims)
         annotations = getattr(self,'annotations',[])
         for a in annotations:
             if getattr(a,'beforeLines',None):
                 g.add(a(self,xA.scale,yA.scale))
         g.add(self.makeLines())
+        if not self.gridFirst:
+            if xAdgl: xA.makeGrid(g,parent=self,dim=yA.getGridDims)
+            if yAdgl: yA.makeGrid(g,parent=self,dim=xA.getGridDims)
         for a in annotations:
             if not getattr(a,'beforeLines',None):
                 g.add(a(self,xA.scale,yA.scale))
         return g
+
+    def addCrossHair(self,name,xv,yv,strokeColor=colors.black,strokeWidth=1,beforeLines=True):
+        from reportlab.graphics.shapes import Group, Line
+        annotations = [a for a in getattr(self,'annotations',[]) if getattr(a,'name',None)!=name]
+        def annotation(self,xScale,yScale):
+            x = xScale(xv)
+            y = yScale(yv)
+            g = Group()
+            xA = xScale.im_self #the x axis
+            g.add(Line(xA._x,y,xA._x+xA._length,y,strokeColor=strokeColor,strokeWidth=strokeWidth))
+            yA = yScale.im_self #the y axis
+            g.add(Line(x,yA._y,x,yA._y+yA._length,strokeColor=strokeColor,strokeWidth=strokeWidth))
+            return g
+        annotation.beforeLines = beforeLines
+        annotations.append(annotation)
+        self.annotations = annotations
 
 class LinePlot3D(LinePlot):
     _attrMap = AttrMap(BASE=LinePlot,
@@ -781,7 +800,7 @@ class ScatterPlot(LinePlot):
                     outerBorderOn = AttrMapValue(isBoolean, desc="Is there an outer border (continuation of axes)"),
                     outerBorderColor = AttrMapValue(isColorOrNone, desc="Color of outer border (if any)"),
                     background = AttrMapValue(isColorOrNone, desc="Background color (if any)"),
-                    labelOffset = AttrMapValue(isNumber, desc="Space between label and Axis (or other labels)"),
+                    labelOffset = AttrMapValue(isNumber, desc="Space between label and Axis (or other labels)",advancedUsage=1),
                     axisTickLengths = AttrMapValue(isNumber, desc="Lenth of the ticks on both axes"),
                     axisStrokeWidth = AttrMapValue(isNumber, desc="Stroke width for both axes"),
                     xLabel = AttrMapValue(isString, desc="Label for the whole X-Axis"),

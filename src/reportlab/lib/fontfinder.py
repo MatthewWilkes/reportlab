@@ -1,6 +1,6 @@
 #Copyright ReportLab Europe Ltd. 2000-2007
 #see license.txt for license details
-__version__=''' $Id: fontfinder.py 3412 2009-01-31 15:11:56Z rgbecker $ '''
+__version__=''' $Id: fontfinder.py 3444 2009-02-27 17:06:49Z rgbecker $ '''
 
 #modification of users/robin/ttflist.py.
 __doc__="""This provides some general-purpose tools for finding fonts.
@@ -62,7 +62,7 @@ import sys, time, os, cPickle, tempfile
 from xml.sax.saxutils import quoteattr
 try:
     from hashlib import md5
-except:
+except ImportError:
     from md5 import md5
 
 EXTENSIONS = ['.ttf','.ttc','.otf','.pfb','.pfa']

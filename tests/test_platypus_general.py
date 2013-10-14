@@ -1,6 +1,6 @@
 #Copyright ReportLab Europe Ltd. 2000-2004
 #see license.txt for license details
-__version__=''' $Id: test_platypus_general.py 3389 2009-01-22 16:51:24Z rgbecker $ '''
+__version__=''' $Id: test_platypus_general.py 3448 2009-03-03 15:24:57Z jonas $ '''
 
 #tests and documents Page Layout API
 __doc__="""This is not obvious so here's a brief explanation.  This module is both
@@ -552,7 +552,7 @@ def showProgress(pageNo):
 
 
 def run():
-    doc = AndyTemplate(outputfile('test_platypus_general.pdf'))
+    doc = AndyTemplate(outputfile('test_platypus_general.pdf'),subject='test0')
     #doc.setPageCallBack(showProgress)
     commentary = getCommentary()
     examples = getExamples()

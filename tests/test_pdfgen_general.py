@@ -2,7 +2,7 @@
 #Copyright ReportLab Europe Ltd. 2000-2008
 #see license.txt for license details
 __doc__='testscript for reportlab.pdfgen'
-__version__=''' $Id: test_pdfgen_general.py 3406 2009-01-26 16:53:31Z andy $ '''
+__version__=''' $Id: test_pdfgen_general.py 3532 2009-08-19 09:29:56Z rgbecker $ '''
 #tests and documents new low-level canvas
 from reportlab.lib.testutils import setOutDir,makeSuiteForClasses, outputfile, printLocation
 setOutDir(__name__)
@@ -930,6 +930,65 @@ class PdfgenTestCase(unittest.TestCase):
 
         # Output the PDF
         c.save()    
+
+    def test2(self):
+        c=canvas.Canvas('test_pdfgen_autocropmarks.pdf',cropMarks=True)
+        c.saveState()
+        c.setStrokeColor((1,0,0))
+        c.rect(0,0,c._pagesize[0],c._pagesize[1],stroke=1)
+        c.restoreState()
+        c.drawString(72,c._pagesize[1]-72,'Auto Crop Marks')
+        c.showPage()
+        c.saveState()
+        c.setStrokeColor((1,0,0))
+        c.rect(0,0,c._pagesize[0],c._pagesize[1],stroke=1)
+        c.restoreState()
+        c.drawString(72,c._pagesize[1]-72,'Auto Crop Marks Another Page')
+        c.showPage()
+        c.save()
+
+    def test3(self):
+        '''some special properties'''
+        palette = [
+                    colors.CMYKColorSep(0.6,0.34,0,0.1,spotName='625C',density=1),
+                    colors.CMYKColorSep(0.13,0.51,0.87,0.48,spotName='464c',density=1),
+                    ]
+        canv = canvas.Canvas(   'test_pdfgen_general_spots.pdf',
+                        pagesize=(346,102),
+                        )
+
+        canv.setLineWidth(1)
+        canv.setStrokeColor(colors.CMYKColor(0,0,0,1))
+        x=10
+        y=10
+        for c in palette:
+            c.density = 1.0
+            canv.setFillColor(c)
+            canv.setFont('Helvetica',20)
+            canv.drawString(x,80,'This is %s' % c.spotName)
+            canv.setFont('Helvetica',6)
+            canv.rect(x,y,50,50,fill=1)
+            canv.setFillColor(c.clone(density=0.5))
+            canv.rect(x+55,y,20,20,fill=1)
+            canv.setFillColor(colors.CMYKColor(0,0,1,0))
+            canv.rect(x+80,y,30,30,fill=1)
+            canv.rect(x+120,y,30,30,fill=1)
+            alpha = c is palette[0] and 1 or 0.5
+            op = c is palette[0] and True or False
+            canv.setFillAlpha(alpha)
+            canv.setFillColor(colors.CMYKColor(1,0,0,0))
+            canv.drawString(x+80+1,y+3,'OP=%d' % int(False))
+            canv.drawString(x+80+1,y+23,'Alpha=%.1f' % alpha)
+            canv.rect(x+90,y+10,10,10,fill=1)
+            canv.setFillOverprint(op)
+            canv.drawString(x+120+1,y+3,'OP=%d' % int(op))
+            canv.drawString(x+120+1,y+23,'Alpha=%.1f' % alpha)
+            canv.rect(x+130,y+10,10,10,fill=1)
+            canv.setFillAlpha(1)
+            canv.setFillOverprint(False)
+            x += canv._pagesize[0]*0.5
+        canv.showPage()
+        canv.save()
 
 def makeSuite():
     return makeSuiteForClasses(PdfgenTestCase)

@@ -1,7 +1,7 @@
 #Copyright ReportLab Europe Ltd. 2000-2004
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/rl_config.py
-__version__=''' $Id: rl_config.py 3345 2008-12-12 17:55:22Z damian $ '''
+__version__=''' $Id: rl_config.py 3585 2009-11-17 14:42:32Z rgbecker $ '''
 __doc__='''Configuration file.  You may edit this if you wish.'''
 
 allowTableBoundsErrors =    1 # set to 0 to die on too large elements in tables in debug (recommend 1 for production use)
@@ -38,6 +38,8 @@ imageReaderFlags=0                                  #attempt to convert images i
                                                     #if imageReaderFlags&2 then attempt autoclosing of those files
                                                     #if imageReaderFlags&4 then cache data 
                                                     #if imageReaderFlags==-1 then use Ralf Schmitt's re-opening approach
+paraFontSizeHeightOffset=   1                       #if true paragraphs start at height-fontSize
+canvas_baseColor=           None                    #initialize the canvas fill and stroke colors if this is set
 
 # places to look for T1Font information
 T1SearchPath =  (
@@ -163,7 +165,9 @@ odbc_driver
 platypus_link_underline
 canvas_basefontname
 allowShortTableRows
-imageReaderFlags'''.split()
+imageReaderFlags
+paraFontSizeHeightOffset
+canvas_baseColor'''.split()
     import os, sys
     global sys_version, _unset_
     sys_version = sys.version.split()[0]        #strip off the other garbage

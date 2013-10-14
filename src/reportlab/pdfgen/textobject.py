@@ -1,7 +1,7 @@
 #Copyright ReportLab Europe Ltd. 2000-2004
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/pdfgen/textobject.py
-__version__=''' $Id: textobject.py 3343 2008-12-12 16:37:37Z damian $ '''
+__version__=''' $Id: textobject.py 3610 2009-12-08 09:53:56Z rgbecker $ '''
 __doc__="""
 PDFTextObject is an efficient way to add text to a Canvas. Do not
 instantiate directly, obtain one from the Canvas instead.
@@ -9,103 +9,152 @@ instantiate directly, obtain one from the Canvas instead.
 Progress Reports:
 8.83, 2000-01-13, gmcm: created from pdfgen.py
 """
-
 import string
 from types import *
-from reportlab.lib.colors import Color, CMYKColor, toColor
+from reportlab.lib.colors import Color, CMYKColor, CMYKColorSep, toColor
 from reportlab.lib.utils import fp_str
 from reportlab.pdfbase import pdfmetrics
-
-_SeqTypes=(TupleType,ListType)
 
 class _PDFColorSetter:
     '''Abstracts the color setting operations; used in Canvas and Textobject
     asseumes we have a _code object'''
-    def setFillColorCMYK(self, c, m, y, k):
+
+    def _checkSeparation(self,cmyk):
+        if isinstance(cmyk,CMYKColorSep):
+            name,sname = self._doc.addColor(cmyk)
+            if name not in self._colorsUsed:
+                self._colorsUsed[name] = sname
+            return name
+
+    def setFillColorCMYK(self, c, m, y, k, alpha=None):
          """set the fill color useing negative color values
          (cyan, magenta, yellow and darkness value).
          Takes 4 arguments between 0.0 and 1.0"""
-         self._fillColorCMYK = (c, m, y, k)
+         self._fillColorObj = (c, m, y, k)
          self._code.append('%s k' % fp_str(c, m, y, k))
+         if alpha is not None:
+             self.setFillAlpha(alpha)
 
-    def setStrokeColorCMYK(self, c, m, y, k):
+    def setStrokeColorCMYK(self, c, m, y, k, alpha=None):
          """set the stroke color useing negative color values
             (cyan, magenta, yellow and darkness value).
             Takes 4 arguments between 0.0 and 1.0"""
-         self._strokeColorCMYK = (c, m, y, k)
+         self._strokeColorObj = (c, m, y, k)
          self._code.append('%s K' % fp_str(c, m, y, k))
+         if alpha is not None:
+             self.setStrokeAlpha(alpha)
 
-    def setFillColorRGB(self, r, g, b):
+    def setFillColorRGB(self, r, g, b, alpha=None):
         """Set the fill color using positive color description
            (Red,Green,Blue).  Takes 3 arguments between 0.0 and 1.0"""
-        self._fillColorRGB = (r, g, b)
+        self._fillColorObj = (r, g, b)
         self._code.append('%s rg' % fp_str(r,g,b))
+        if alpha is not None:
+            self.setFillAlpha(alpha)
 
-    def setStrokeColorRGB(self, r, g, b):
+    def setStrokeColorRGB(self, r, g, b, alpha=None):
         """Set the stroke color using positive color description
            (Red,Green,Blue).  Takes 3 arguments between 0.0 and 1.0"""
-        self._strokeColorRGB = (r, g, b)
+        self._strokeColorObj = (r, g, b)
         self._code.append('%s RG' % fp_str(r,g,b))
+        if alpha is not None:
+            self.setStrokeAlpha(alpha)
 
-    def setFillColor(self, aColor):
+    def setFillColor(self, aColor, alpha=None):
         """Takes a color object, allowing colors to be referred to by name"""
         if isinstance(aColor, CMYKColor):
             d = aColor.density
             c,m,y,k = (d*aColor.cyan, d*aColor.magenta, d*aColor.yellow, d*aColor.black)
-            self._fillColorCMYK = (c, m, y, k)
-            self._code.append('%s k' % fp_str(c, m, y, k))
+            self._fillColorObj = aColor
+            name = self._checkSeparation(aColor)
+            if name:
+                self._code.append('/%s cs %s scn' % (name,fp_str(d)))
+            else:
+                self._code.append('%s k' % fp_str(c, m, y, k))
         elif isinstance(aColor, Color):
             rgb = (aColor.red, aColor.green, aColor.blue)
-            self._fillColorRGB = rgb
+            self._fillColorObj = aColor
             self._code.append('%s rg' % fp_str(rgb) )
-        elif type(aColor) in _SeqTypes:
+        elif isinstance(aColor,(tuple,list)):
             l = len(aColor)
             if l==3:
-                self._fillColorRGB = aColor
+                self._fillColorObj = aColor
                 self._code.append('%s rg' % fp_str(aColor) )
             elif l==4:
                 self.setFillColorCMYK(aColor[0], aColor[1], aColor[2], aColor[3])
             else:
                 raise ValueError('Unknown color %r' % aColor)
-        elif type(aColor) is StringType:
+        elif isinstance(aColor,basestring):
             self.setFillColor(toColor(aColor))
         else:
             raise ValueError('Unknown color %r' % aColor)
+        if alpha is not None:
+            self.setFillAlpha(alpha)
+        elif getattr(aColor, 'alpha', None) is not None:
+            self.setFillAlpha(aColor.alpha)
 
-    def setStrokeColor(self, aColor):
+    def setStrokeColor(self, aColor, alpha=None):
         """Takes a color object, allowing colors to be referred to by name"""
         if isinstance(aColor, CMYKColor):
             d = aColor.density
             c,m,y,k = (d*aColor.cyan, d*aColor.magenta, d*aColor.yellow, d*aColor.black)
-            self._strokeColorCMYK = (c, m, y, k)
-            self._code.append('%s K' % fp_str(c, m, y, k))
+            self._strokeColorObj = aColor
+            name = self._checkSeparation(aColor)
+            if name:
+                self._code.append('/%s CS %s SCN' % (name,fp_str(d)))
+            else:
+                self._code.append('%s K' % fp_str(c, m, y, k))
         elif isinstance(aColor, Color):
             rgb = (aColor.red, aColor.green, aColor.blue)
-            self._strokeColorRGB = rgb
+            self._strokeColorObj = aColor
             self._code.append('%s RG' % fp_str(rgb) )
-        elif type(aColor) in _SeqTypes:
+        elif isinstance(aColor,(tuple,list)):
             l = len(aColor)
             if l==3:
-                self._strokeColorRGB = aColor
+                self._strokeColorObj = aColor
                 self._code.append('%s RG' % fp_str(aColor) )
             elif l==4:
                 self.setStrokeColorCMYK(aColor[0], aColor[1], aColor[2], aColor[3])
             else:
                 raise ValueError('Unknown color %r' % aColor)
-        elif type(aColor) is StringType:
+        elif isinstance(aColor,basestring):
             self.setStrokeColor(toColor(aColor))
         else:
             raise ValueError('Unknown color %r' % aColor)
+        if alpha is not None:
+            self.setStrokeAlpha(alpha)
+        elif getattr(aColor, 'alpha', None) is not None:
+            self.setStrokeAlpha(aColor.alpha)
 
-    def setFillGray(self, gray):
+    def setFillGray(self, gray, alpha=None):
         """Sets the gray level; 0.0=black, 1.0=white"""
-        self._fillColorRGB = (gray, gray, gray)
+        self._fillColorObj = (gray, gray, gray)
         self._code.append('%s g' % fp_str(gray))
+        if alpha is not None:
+            self.setFillAlpha(alpha)
 
-    def setStrokeGray(self, gray):
+    def setStrokeGray(self, gray, alpha=None):
         """Sets the gray level; 0.0=black, 1.0=white"""
-        self._strokeColorRGB = (gray, gray, gray)
+        self._strokeColorObj = (gray, gray, gray)
         self._code.append('%s G' % fp_str(gray))
+        if alpha is not None:
+            self.setFillAlpha(alpha)
+
+    def setStrokeAlpha(self,a):
+        if not (isinstance(a,(float,int)) and 0<=a<=1):
+            raise ValueError('setStrokeAlpha invalid value %r' % a)
+        getattr(self,'_setStrokeAlpha',lambda x: None)(a)
+
+    def setFillAlpha(self,a):
+        if not (isinstance(a,(float,int)) and 0<=a<=1):
+            raise ValueError('setFillAlpha invalid value %r' % a)
+        getattr(self,'_setFillAlpha',lambda x: None)(a)
+
+    def setStrokeOverprint(self,a):
+        getattr(self,'_setStrokeOverprint',lambda x: None)(a)
+
+    def setFillOverprint(self,a):
+        getattr(self,'_setFillOverprint',lambda x: None)(a)
 
 class PDFTextObject(_PDFColorSetter):
     """PDF logically separates text and graphics drawing; text
@@ -124,6 +173,8 @@ class PDFTextObject(_PDFColorSetter):
         self._fontname = self._canvas._fontname
         self._fontsize = self._canvas._fontsize
         self._leading = self._canvas._leading
+        self._doc = self._canvas._doc
+        self._colorsUsed = self._canvas._colorsUsed
         font = pdfmetrics.getFont(self._fontname)
         self._curSubset = -1
         self.setTextOrigin(x, y)
@@ -368,13 +419,11 @@ class PDFTextObject(_PDFColorSetter):
         since this may be indented, by default it trims whitespace
         off each line and from the beginning; set trim=0 to preserve
         whitespace."""
-        if type(stuff) == StringType:
+        if isinstance(stuff,basestring):
             lines = string.split(string.strip(stuff), '\n')
             if trim==1:
                 lines = map(string.strip,lines)
-        elif type(stuff) == ListType:
-            lines = stuff
-        elif type(stuff) == TupleType:
+        elif isinstance(stuff,(tuple,list)):
             lines = stuff
         else:
             assert 1==0, "argument to textlines must be string,, list or tuple"

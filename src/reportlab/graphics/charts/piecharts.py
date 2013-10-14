@@ -6,7 +6,7 @@
 #a wedges collection whic lets you customize the group or every individual
 #wedge.
 
-__version__=''' $Id: piecharts.py 3345 2008-12-12 17:55:22Z damian $ '''
+__version__=''' $Id: piecharts.py 3604 2009-11-27 16:35:29Z meitham $ '''
 __doc__="""Basic Pie Chart class.
 
 This permits you to customize and pop out individual wedges;
@@ -59,30 +59,33 @@ class WedgeProperties(PropHolder):
     format method.
     """
     _attrMap = AttrMap(
-        strokeWidth = AttrMapValue(isNumber),
-        fillColor = AttrMapValue(isColorOrNone),
-        strokeColor = AttrMapValue(isColorOrNone),
-        strokeDashArray = AttrMapValue(isListOfNumbersOrNone),
-        popout = AttrMapValue(isNumber),
-        fontName = AttrMapValue(isString),
-        fontSize = AttrMapValue(isNumber),
-        fontColor = AttrMapValue(isColorOrNone),
-        labelRadius = AttrMapValue(isNumber),
-        label_dx = AttrMapValue(isNumber),
-        label_dy = AttrMapValue(isNumber),
-        label_angle = AttrMapValue(isNumber),
-        label_boxAnchor = AttrMapValue(isBoxAnchor),
-        label_boxStrokeColor = AttrMapValue(isColorOrNone),
-        label_boxStrokeWidth = AttrMapValue(isNumber),
-        label_boxFillColor = AttrMapValue(isColorOrNone),
-        label_strokeColor = AttrMapValue(isColorOrNone),
-        label_strokeWidth = AttrMapValue(isNumber),
-        label_text = AttrMapValue(isStringOrNone),
-        label_leading = AttrMapValue(isNumberOrNone),
-        label_width = AttrMapValue(isNumberOrNone),
-        label_maxWidth = AttrMapValue(isNumberOrNone),
-        label_height = AttrMapValue(isNumberOrNone),
-        label_textAnchor = AttrMapValue(isTextAnchor),
+        strokeWidth = AttrMapValue(isNumber,desc=''),
+        fillColor = AttrMapValue(isColorOrNone,desc=''),
+        strokeColor = AttrMapValue(isColorOrNone,desc=''),
+        strokeDashArray = AttrMapValue(isListOfNumbersOrNone,desc=''),
+        strokeLineCap = AttrMapValue(OneOf(0,1,2),desc="Line cap 0=butt, 1=round & 2=square"),
+        strokeLineJoin = AttrMapValue(OneOf(0,1,2),desc="Line join 0=miter, 1=round & 2=bevel"),
+        strokeMiterLimit = AttrMapValue(isNumber,desc='miter limit control miter line joins'),
+        popout = AttrMapValue(isNumber,desc="how far of centre a wedge to pop."),
+        fontName = AttrMapValue(isString,desc=''),
+        fontSize = AttrMapValue(isNumber,desc=''),
+        fontColor = AttrMapValue(isColorOrNone,desc=''),
+        labelRadius = AttrMapValue(isNumber,desc=''),
+        label_dx = AttrMapValue(isNumber,desc=''),
+        label_dy = AttrMapValue(isNumber,desc=''),
+        label_angle = AttrMapValue(isNumber,desc=''),
+        label_boxAnchor = AttrMapValue(isBoxAnchor,desc=''),
+        label_boxStrokeColor = AttrMapValue(isColorOrNone,desc=''),
+        label_boxStrokeWidth = AttrMapValue(isNumber,desc=''),
+        label_boxFillColor = AttrMapValue(isColorOrNone,desc=''),
+        label_strokeColor = AttrMapValue(isColorOrNone,desc=''),
+        label_strokeWidth = AttrMapValue(isNumber,desc=''),
+        label_text = AttrMapValue(isStringOrNone,desc=''),
+        label_leading = AttrMapValue(isNumberOrNone,desc=''),
+        label_width = AttrMapValue(isNumberOrNone,desc=''),
+        label_maxWidth = AttrMapValue(isNumberOrNone,desc=''),
+        label_height = AttrMapValue(isNumberOrNone,desc=''),
+        label_textAnchor = AttrMapValue(isTextAnchor,desc=''),
         label_visible = AttrMapValue(isBoolean,desc="True if the label is to be drawn"),
         label_topPadding = AttrMapValue(isNumber,'padding at top of box'),
         label_leftPadding = AttrMapValue(isNumber,'padding at left of box'),
@@ -94,7 +97,7 @@ class WedgeProperties(PropHolder):
         label_pointer_elbowLength = AttrMapValue(isNumber,desc='length of final indicator line segment'),
         label_pointer_edgePad = AttrMapValue(isNumber,desc='pad between pointer label and box'),
         label_pointer_piePad = AttrMapValue(isNumber,desc='pad between pointer label and pie'),
-        swatchMarker = AttrMapValue(NoneOr(isSymbol), desc="None or makeMarker('Diamond') ..."),
+        swatchMarker = AttrMapValue(NoneOr(isSymbol), desc="None or makeMarker('Diamond') ...",advancedUsage=1),
         visible = AttrMapValue(isBoolean,'set to false to skip displaying'),
         )
 
@@ -103,6 +106,9 @@ class WedgeProperties(PropHolder):
         self.fillColor = None
         self.strokeColor = STATE_DEFAULTS["strokeColor"]
         self.strokeDashArray = STATE_DEFAULTS["strokeDashArray"]
+        self.strokeLineJoin = 1
+        self.strokeLineCap = 0
+        self.strokeMiterLimit = 0
         self.popout = 0
         self.fontName = STATE_DEFAULTS["fontName"]
         self.fontSize = STATE_DEFAULTS["fontSize"]
@@ -416,12 +422,12 @@ class Pie(AbstractPieChart):
         startAngle = AttrMapValue(isNumber, desc="angle of first slice; like the compass, 0 is due North"),
         direction = AttrMapValue(OneOf('clockwise', 'anticlockwise'), desc="'clockwise' or 'anticlockwise'"),
         slices = AttrMapValue(None, desc="collection of wedge descriptor objects"),
-        simpleLabels = AttrMapValue(isBoolean, desc="If true(default) use String not super duper WedgeLabel"),
-        other_threshold = AttrMapValue(isNumber, desc='A value for doing threshholding, not used yet.'),
-        checkLabelOverlap = AttrMapValue(isBoolean, desc="If true check and attempt to fix standard label overlaps(default off)"),
-        pointerLabelMode = AttrMapValue(OneOf(None,'LeftRight','LeftAndRight'), desc=""),
-        sameRadii = AttrMapValue(isBoolean, desc="If true make x/y radii the same(default off)"),
-        orderMode = AttrMapValue(OneOf('fixed','alternate')),
+        simpleLabels = AttrMapValue(isBoolean, desc="If true(default) use String not super duper WedgeLabel",advancedUsage=1),
+        other_threshold = AttrMapValue(isNumber, desc='A value for doing threshholding, not used yet.',advancedUsage=1),
+        checkLabelOverlap = AttrMapValue(isBoolean, desc="If true check and attempt to fix\n standard label overlaps(default off)",advancedUsage=1),
+        pointerLabelMode = AttrMapValue(OneOf(None,'LeftRight','LeftAndRight'), desc='',advancedUsage=1),
+        sameRadii = AttrMapValue(isBoolean, desc="If true make x/y radii the same(default off)",advancedUsage=1),
+        orderMode = AttrMapValue(OneOf('fixed','alternate'),advancedUsage=1),
         xradius = AttrMapValue(isNumberOrNone, desc="X direction Radius"),
         yradius = AttrMapValue(isNumberOrNone, desc="Y direction Radius"),
         )
@@ -666,6 +672,10 @@ class Pie(AbstractPieChart):
             theWedge.fillColor = wedgeStyle.fillColor
             theWedge.strokeColor = wedgeStyle.strokeColor
             theWedge.strokeWidth = wedgeStyle.strokeWidth
+            theWedge.strokeLineJoin = wedgeStyle.strokeLineJoin
+            theWedge.strokeLineCap = wedgeStyle.strokeLineCap
+            theWedge.strokeMiterLimit = wedgeStyle.strokeMiterLimit
+            theWedge.strokeWidth = wedgeStyle.strokeWidth
             theWedge.strokeDashArray = wedgeStyle.strokeDashArray
 
             g_add(theWedge)
@@ -884,38 +894,39 @@ class Wedge3dProperties(PropHolder):
     format method.
     """
     _attrMap = AttrMap(
-        fillColor = AttrMapValue(isColorOrNone),
-        fillColorShaded = AttrMapValue(isColorOrNone),
-        fontColor = AttrMapValue(isColorOrNone),
-        fontName = AttrMapValue(isString),
-        fontSize = AttrMapValue(isNumber),
-        label_angle = AttrMapValue(isNumber),
+        fillColor = AttrMapValue(isColorOrNone,desc=''),
+        fillColorShaded = AttrMapValue(isColorOrNone,desc=''),
+        fontColor = AttrMapValue(isColorOrNone,desc=''),
+        fontName = AttrMapValue(isString,desc=''),
+        fontSize = AttrMapValue(isNumber,desc=''),
+        label_angle = AttrMapValue(isNumber,desc=''),
         label_bottomPadding = AttrMapValue(isNumber,'padding at bottom of box'),
-        label_boxAnchor = AttrMapValue(isBoxAnchor),
-        label_boxFillColor = AttrMapValue(isColorOrNone),
-        label_boxStrokeColor = AttrMapValue(isColorOrNone),
-        label_boxStrokeWidth = AttrMapValue(isNumber),
-        label_dx = AttrMapValue(isNumber),
-        label_dy = AttrMapValue(isNumber),
-        label_height = AttrMapValue(isNumberOrNone),
-        label_leading = AttrMapValue(isNumberOrNone),
+        label_boxAnchor = AttrMapValue(isBoxAnchor,desc=''),
+        label_boxFillColor = AttrMapValue(isColorOrNone,desc=''),
+        label_boxStrokeColor = AttrMapValue(isColorOrNone,desc=''),
+        label_boxStrokeWidth = AttrMapValue(isNumber,desc=''),
+        label_dx = AttrMapValue(isNumber,desc=''),
+        label_dy = AttrMapValue(isNumber,desc=''),
+        label_height = AttrMapValue(isNumberOrNone,desc=''),
+        label_leading = AttrMapValue(isNumberOrNone,desc=''),
         label_leftPadding = AttrMapValue(isNumber,'padding at left of box'),
-        label_maxWidth = AttrMapValue(isNumberOrNone),
+        label_maxWidth = AttrMapValue(isNumberOrNone,desc=''),
         label_rightPadding = AttrMapValue(isNumber,'padding at right of box'),
-        label_strokeColor = AttrMapValue(isColorOrNone),
-        label_strokeWidth = AttrMapValue(isNumber),
-        label_text = AttrMapValue(isStringOrNone),
-        label_textAnchor = AttrMapValue(isTextAnchor),
+        label_simple_pointer = AttrMapValue(isBoolean,'set to True for simple pointers'),
+        label_strokeColor = AttrMapValue(isColorOrNone,desc=''),
+        label_strokeWidth = AttrMapValue(isNumber,desc=''),
+        label_text = AttrMapValue(isStringOrNone,desc=''),
+        label_textAnchor = AttrMapValue(isTextAnchor,desc=''),
         label_topPadding = AttrMapValue(isNumber,'padding at top of box'),
         label_visible = AttrMapValue(isBoolean,desc="True if the label is to be drawn"),
-        label_width = AttrMapValue(isNumberOrNone),
-        labelRadius = AttrMapValue(isNumber),
-        popout = AttrMapValue(isNumber),
-        shading = AttrMapValue(isNumber),
-        strokeColor = AttrMapValue(isColorOrNone),
-        strokeColorShaded = AttrMapValue(isColorOrNone),
-        strokeDashArray = AttrMapValue(isListOfNumbersOrNone),
-        strokeWidth = AttrMapValue(isNumber),
+        label_width = AttrMapValue(isNumberOrNone,desc=''),
+        labelRadius = AttrMapValue(isNumber,desc=''),
+        popout = AttrMapValue(isNumber,desc=''),
+        shading = AttrMapValue(isNumber,desc=''),
+        strokeColor = AttrMapValue(isColorOrNone,desc=''),
+        strokeColorShaded = AttrMapValue(isColorOrNone,desc=''),
+        strokeDashArray = AttrMapValue(isListOfNumbersOrNone,desc=''),
+        strokeWidth = AttrMapValue(isNumber,desc=''),
         visible = AttrMapValue(isBoolean,'set to false to skip displaying'),
         )
 
@@ -943,6 +954,7 @@ class Wedge3dProperties(PropHolder):
         self.label_leading =    self.label_width = self.label_maxWidth = self.label_height = None
         self.label_textAnchor = 'start'
         self.label_visible = 1
+        self.label_simple_pointer = 0
 
 class _SL3D:
     def __init__(self,lo,hi):

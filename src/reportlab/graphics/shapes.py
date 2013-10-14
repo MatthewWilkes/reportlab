@@ -2,7 +2,7 @@
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/graphics/shapes.py
 
-__version__=''' $Id: shapes.py 3345 2008-12-12 17:55:22Z damian $ '''
+__version__=''' $Id: shapes.py 3613 2009-12-09 18:03:32Z rgbecker $ '''
 __doc__='''Core of the graphics library - defines Drawing and Shapes'''
 
 import string, os, sys
@@ -15,6 +15,7 @@ from reportlab.rl_config import shapeChecking, verbose, defaultGraphicsFontName,
 from reportlab.lib import logger
 from reportlab.lib import colors
 from reportlab.lib.validators import *
+isOpacity = NoneOr(isNumberInRange(0,1))
 from reportlab.lib.attrmap import *
 from reportlab.lib.utils import fp_str
 from reportlab.pdfbase.pdfmetrics import stringWidth
@@ -41,13 +42,15 @@ STATE_DEFAULTS = {   # sensible defaults for all
     'strokeWidth': 1,
     'strokeLineCap': 0,
     'strokeLineJoin': 0,
-    'strokeMiterLimit' : 'TBA',  # don't know yet so let bomb here
+    'strokeMiterLimit' : 10,    # don't know yet so let bomb here
     'strokeDashArray': None,
-    'strokeOpacity': 1.0,  #100%
+    'strokeOpacity': None, #100%
+    'fillOpacity': None,
+    'fillOverprint': False,
+    'strokeOverprint': False,
 
     'fillColor': colors.black,   #...or text will be invisible
     #'fillRule': NON_ZERO_WINDING, - these can be done later
-    #'fillOpacity': 1.0,  #100% - can be done later
 
     'fontSize': 10,
     'fontName': defaultGraphicsFontName,
@@ -309,8 +312,10 @@ class Group(Shape):
     case they are subsequently accessible as properties."""
 
     _attrMap = AttrMap(
-        transform = AttrMapValue(isTransform,desc="Coordinate transformation to apply"),
+        transform = AttrMapValue(isTransform,desc="Coordinate transformation to apply",advancedUsage=1),
         contents = AttrMapValue(isListOfShapes,desc="Contained drawable elements"),
+        strokeOverprint = AttrMapValue(isBoolean,desc='Turn on stroke overprinting'),
+        fillOverprint = AttrMapValue(isBoolean,desc='Turn on fill overprinting',advancedUsage=1),
         )
 
     def __init__(self, *elements, **keywords):
@@ -572,7 +577,7 @@ class Drawing(Group, Flowable):
         width = AttrMapValue(isNumber,desc="Drawing width in points."),
         height = AttrMapValue(isNumber,desc="Drawing height in points."),
         canv = AttrMapValue(None),
-        background = AttrMapValue(isValidChildOrNone,desc="Background widget for the drawing"),
+        background = AttrMapValue(isValidChildOrNone,desc="Background widget for the drawing e.g. Rect(0,0,width,height)"),
         hAlign = AttrMapValue(OneOf("LEFT", "RIGHT", "CENTER", "CENTRE"), desc="Horizontal alignment within parent document"),
         vAlign = AttrMapValue(OneOf("TOP", "BOTTOM", "CENTER", "CENTRE"), desc="Vertical alignment within parent document"),
         #AR temporary hack to track back up.
@@ -585,7 +590,7 @@ class Drawing(Group, Flowable):
 
     def __init__(self, width=400, height=200, *nodes, **keywords):
         self.background = None
-        apply(Group.__init__,(self,)+nodes,keywords)
+        Group.__init__(self,*nodes,**keywords)
         self.width = width
         self.height = height
         self.hAlign = 'LEFT'
@@ -671,7 +676,7 @@ class Drawing(Group, Flowable):
         if string.lower(plotMode[1][1:]) in self._saveModes:
             fnroot = plotMode[0]
 
-        plotMode = map(str.lower,formats or getattr(self,'formats',['pdf']))
+        plotMode = [x.lower() for x in (formats or getattr(self,'formats',['pdf']))]
         verbose = (verbose is not None and (verbose,) or (getattr(self,'verbose',verbose),))[0]
         _saved = logger.warnOnce.enabled, logger.infoOnce.enabled
         logger.warnOnce.enabled = logger.infoOnce.enabled = verbose
@@ -766,6 +771,25 @@ class Drawing(Group, Flowable):
         elif format == 'py':
             return self._renderPy()
 
+    def resized(self,kind='fit',lpad=0,rpad=0,bpad=0,tpad=0):
+        '''return a base class drawing which ensures all the contents fits'''
+        C = self.getContents()
+        oW = self.width
+        oH = self.height
+        drawing = Drawing(oW,oH,*C)
+        xL,yL,xH,yH = drawing.getBounds()
+        if kind=='fit' or (kind=='expand' and (xL<lpad or xH>oW-rpad or yL<bpad or yH>oH-tpad)):
+            drawing.width = xH-xL+lpad+rpad
+            drawing.height = yH-yL+tpad+bpad
+            drawing.transform = (1,0,0,1,lpad-xL,bpad-yL)
+        elif kind=='fitx' or (kind=='expandx' and (xL<lpad or xH>oW-rpad)):
+            drawing.width = xH-xL+lpad+rpad
+            drawing.transform = (1,0,0,1,lpad-xL,0)
+        elif kind=='fity' or (kind=='expandy' and (yL<bpad or yH>oH-tpad)):
+            drawing.height = yH-yL+tpad+bpad
+            drawing.transform = (1,0,0,1,0,bpad-yL)
+        return drawing
+
 class _DrawingEditorMixin:
     '''This is a mixin to provide functionality for edited drawings'''
     def _add(self,obj,value,name=None,validate=None,desc=None,pos=None):
@@ -794,10 +818,12 @@ class LineShape(Shape):
     _attrMap = AttrMap(
         strokeColor = AttrMapValue(isColorOrNone),
         strokeWidth = AttrMapValue(isNumber),
-        strokeLineCap = AttrMapValue(None),
-        strokeLineJoin = AttrMapValue(None),
-        strokeMiterLimit = AttrMapValue(isNumber),
-        strokeDashArray = AttrMapValue(isListOfNumbersOrNone),
+        strokeLineCap = AttrMapValue(OneOf(0,1,2),desc="Line cap 0=butt, 1=round & 2=square"),
+        strokeLineJoin = AttrMapValue(OneOf(0,1,2),desc="Line join 0=miter, 1=round & 2=bevel"),
+        strokeMiterLimit = AttrMapValue(isNumber,desc="miter limit control miter line joins"),
+        strokeDashArray = AttrMapValue(isListOfNumbersOrNone,desc="a sequence of numbers represents on and off, e.g. (2,1)"),
+        strokeOpacity = AttrMapValue(isOpacity,desc="The level of transparency of the line, any real number betwen 0 and 1"),
+        strokeOverprint = AttrMapValue(isBoolean,desc='Turn on stroke overprinting'),
         )
 
     def __init__(self, kw):
@@ -807,15 +833,16 @@ class LineShape(Shape):
         self.strokeLineJoin = 0
         self.strokeMiterLimit = 0
         self.strokeDashArray = None
+        self.strokeOpacity = None
         self.setProperties(kw)
 
 
 class Line(LineShape):
     _attrMap = AttrMap(BASE=LineShape,
-        x1 = AttrMapValue(isNumber),
-        y1 = AttrMapValue(isNumber),
-        x2 = AttrMapValue(isNumber),
-        y2 = AttrMapValue(isNumber),
+        x1 = AttrMapValue(isNumber,desc=""),
+        y1 = AttrMapValue(isNumber,desc=""),
+        x2 = AttrMapValue(isNumber,desc=""),
+        y2 = AttrMapValue(isNumber,desc=""),
         )
 
     def __init__(self, x1, y1, x2, y2, **kw):
@@ -829,16 +856,18 @@ class Line(LineShape):
         "Returns bounding rectangle of object as (x1,y1,x2,y2)"
         return (self.x1, self.y1, self.x2, self.y2)
 
-
 class SolidShape(LineShape):
     # base for anything with outline and content
 
     _attrMap = AttrMap(BASE=LineShape,
-        fillColor = AttrMapValue(isColorOrNone),
+        fillColor = AttrMapValue(isColorOrNone,desc="filling color of the shape, e.g. red"),
+        fillOpacity = AttrMapValue(isOpacity,desc="the level of transparency of the color, any real number between 0 and 1"),
+        fillOverprint = AttrMapValue(isBoolean,desc='Turn on fill overprinting'),
         )
 
     def __init__(self, kw):
         self.fillColor = STATE_DEFAULTS['fillColor']
+        self.fillOpacity = None
         # do this at the end so keywords overwrite
         #the above settings
         LineShape.__init__(self, kw)
@@ -978,8 +1007,8 @@ class Rect(SolidShape):
     _attrMap = AttrMap(BASE=SolidShape,
         x = AttrMapValue(isNumber),
         y = AttrMapValue(isNumber),
-        width = AttrMapValue(isNumber),
-        height = AttrMapValue(isNumber),
+        width = AttrMapValue(isNumber,desc="width of the object in points"),
+        height = AttrMapValue(isNumber,desc="height of the objects in points"),
         rx = AttrMapValue(isNumber),
         ry = AttrMapValue(isNumber),
         )
@@ -1008,8 +1037,8 @@ class Image(SolidShape):
     _attrMap = AttrMap(BASE=SolidShape,
         x = AttrMapValue(isNumber),
         y = AttrMapValue(isNumber),
-        width = AttrMapValue(isNumberOrNone),
-        height = AttrMapValue(isNumberOrNone),
+        width = AttrMapValue(isNumberOrNone,desc="width of the object in points"),
+        height = AttrMapValue(isNumberOrNone,desc="height of the objects in points"),
         path = AttrMapValue(None),
         )
 
@@ -1027,14 +1056,15 @@ class Image(SolidShape):
         return new
 
     def getBounds(self):
-        return (self.x, self.y, self.x + width, self.y + width)
+        # bug fix contributed by Marcel Tromp <mtromp.docbook@gmail.com>
+        return (self.x, self.y, self.x + self.width, self.y + self.height)
 
 class Circle(SolidShape):
 
     _attrMap = AttrMap(BASE=SolidShape,
-        cx = AttrMapValue(isNumber),
-        cy = AttrMapValue(isNumber),
-        r = AttrMapValue(isNumber),
+        cx = AttrMapValue(isNumber,desc="x of the centre"),
+        cy = AttrMapValue(isNumber,desc="y of the centre"),
+        r = AttrMapValue(isNumber,desc="radius in points"),
         )
 
     def __init__(self, cx, cy, r, **kw):
@@ -1053,10 +1083,10 @@ class Circle(SolidShape):
 
 class Ellipse(SolidShape):
     _attrMap = AttrMap(BASE=SolidShape,
-        cx = AttrMapValue(isNumber),
-        cy = AttrMapValue(isNumber),
-        rx = AttrMapValue(isNumber),
-        ry = AttrMapValue(isNumber),
+        cx = AttrMapValue(isNumber,desc="x of the centre"),
+        cy = AttrMapValue(isNumber,desc="y of the centre"),
+        rx = AttrMapValue(isNumber,desc="x radius"),
+        ry = AttrMapValue(isNumber,desc="y radius"),
         )
 
     def __init__(self, cx, cy, rx, ry, **kw):
@@ -1079,9 +1109,9 @@ class Wedge(SolidShape):
        from start angle to end angle"""
 
     _attrMap = AttrMap(BASE=SolidShape,
-        centerx = AttrMapValue(isNumber),
-        centery = AttrMapValue(isNumber),
-        radius = AttrMapValue(isNumber),
+        centerx = AttrMapValue(isNumber,desc="x of the centre"),
+        centery = AttrMapValue(isNumber,desc="y of the centre"),
+        radius = AttrMapValue(isNumber,desc="radius in points"),
         startangledegrees = AttrMapValue(isNumber),
         endangledegrees = AttrMapValue(isNumber),
         yradius = AttrMapValue(isNumberOrNone),
@@ -1172,13 +1202,13 @@ class Polygon(SolidShape):
     joined back to the start for you."""
 
     _attrMap = AttrMap(BASE=SolidShape,
-        points = AttrMapValue(isListOfNumbers),
+        points = AttrMapValue(isListOfNumbers,desc="list of numbers in the form x1, y1, x2, y2 ... xn, yn"),
         )
 
     def __init__(self, points=[], **kw):
         SolidShape.__init__(self, kw)
         assert len(points) % 2 == 0, 'Point list must have even number of elements!'
-        self.points = points
+        self.points = points or []
 
     def copy(self):
         new = self.__class__(self.points)
@@ -1194,11 +1224,12 @@ class PolyLine(LineShape):
     Put the numbers in the list, not two-tuples."""
 
     _attrMap = AttrMap(BASE=LineShape,
-        points = AttrMapValue(isListOfNumbers),
+        points = AttrMapValue(isListOfNumbers,desc="list of numbers in the form x1, y1, x2, y2 ... xn, yn"),
         )
 
     def __init__(self, points=[], **kw):
         LineShape.__init__(self, kw)
+        points = points or []
         lenPoints = len(points)
         if lenPoints:
             if type(points[0]) in (ListType,TupleType):
@@ -1219,19 +1250,27 @@ class PolyLine(LineShape):
     def getBounds(self):
         return getPointsBounds(self.points)
 
+def numericXShift(tA,text,w,fontName,fontSize,encoding=None):
+    dp = getattr(tA,'_dp','.')
+    i = text.rfind(dp)
+    if i>=0:
+        dpOffs = getattr(tA,'_dpLen',0)
+        w = dpOffs + stringWidth(text[:i],fontName,fontSize,encoding)
+    return w
+
 class String(Shape):
     """Not checked against the spec, just a way to make something work.
     Can be anchored left, middle or end."""
 
     # to do.
     _attrMap = AttrMap(
-        x = AttrMapValue(isNumber),
-        y = AttrMapValue(isNumber),
-        text = AttrMapValue(isString),
-        fontName = AttrMapValue(None),
-        fontSize = AttrMapValue(isNumber),
-        fillColor = AttrMapValue(isColorOrNone),
-        textAnchor = AttrMapValue(isTextAnchor),
+        x = AttrMapValue(isNumber,desc="x point of anchoring"),
+        y = AttrMapValue(isNumber,desc="y point of anchoring"),
+        text = AttrMapValue(isString,desc="the text of the string"),
+        fontName = AttrMapValue(None,desc="font name of the text - font is either acrobat standard or registered when using external font."),
+        fontSize = AttrMapValue(isNumber,desc="font size"),
+        fillColor = AttrMapValue(isColorOrNone,desc="color of the font"),
+        textAnchor = AttrMapValue(OneOf('start','middle','end','numeric'),desc="treat (x,y) as one of the options below."),
         encoding = AttrMapValue(isString),
         )
     encoding = 'utf8'
@@ -1256,13 +1295,17 @@ class String(Shape):
 
     def getBounds(self):
         # assumes constant drop of 0.2*size to baseline
-        w = stringWidth(self.text,self.fontName,self.fontSize,self.encoding)
-        if self.textAnchor == 'start':
-            x = self.x
-        elif self.textAnchor == 'middle':
-            x = self.x - 0.5*w
-        elif self.textAnchor == 'end':
-            x = self.x - w
+        t = self.text
+        w = stringWidth(t,self.fontName,self.fontSize,self.encoding)
+        tA = self.textAnchor
+        x = self.x
+        if tA!='start':
+            if tA=='middle':
+                x -= 0.5*w
+            elif tA=='end':
+                x -= w
+            elif tA=='numeric':
+                x -= numericXShift(tA,t,w,self.fontName,self.fontSize,self.encoding)
         return (x, self.y - 0.2 * self.fontSize, x+w, self.y + self.fontSize)
 
 class UserNode(_DrawTimeResizeable):

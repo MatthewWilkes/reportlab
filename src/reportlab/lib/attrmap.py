@@ -1,7 +1,7 @@
 #Copyright ReportLab Europe Ltd. 2000-2004
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/lib/attrmap.py
-__version__=''' $Id: attrmap.py 3342 2008-12-12 15:55:34Z andy $ '''
+__version__=''' $Id: attrmap.py 3601 2009-11-26 15:11:20Z rgbecker $ '''
 __doc__='''Framework for objects whose assignments are checked. Used by graphics.
 
 We developed reportlab/graphics prior to Python 2 and metaclasses. For the
@@ -45,10 +45,11 @@ class CallableValue:
 
 class AttrMapValue:
     '''Simple multi-value holder for attribute maps'''
-    def __init__(self,validate=None,desc=None,initial=None, **kw):
+    def __init__(self,validate=None,desc=None,initial=None, advancedUsage=0, **kw):
         self.validate = validate or isAnything
         self.desc = desc
         self._initial = initial
+        self._advancedUsage = advancedUsage
         for k,v in kw.items():
             setattr(self,k,v)
 
@@ -60,6 +61,9 @@ class AttrMapValue:
         elif name=='hidden':
             return 0
         raise AttributeError, name
+
+    def __repr__(self):
+        return 'AttrMapValue(%s)' % ', '.join(['%s=%r' % i for i in self.__dict__.iteritems()])
 
 class AttrMap(UserDict):
     def __init__(self,BASE=None,UNWANTED=[],**kw):

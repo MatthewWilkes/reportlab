@@ -2,7 +2,7 @@
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/graphics/charts/areas.py
 
-__version__=''' $Id: areas.py 3345 2008-12-12 17:55:22Z damian $ '''
+__version__=''' $Id: areas.py 3602 2009-11-26 16:25:50Z meitham $ '''
 __doc__='''This module defines a Area mixin classes'''
 
 from reportlab.lib.validators import isNumber, isColor, isColorOrNone, isNoneOrShape
@@ -20,7 +20,7 @@ class PlotArea(Widget):
         strokeColor = AttrMapValue(isColorOrNone, desc='Color of the plot area border.'),
         strokeWidth = AttrMapValue(isNumber, desc='Width plot area border.'),
         fillColor = AttrMapValue(isColorOrNone, desc='Color of the plot area interior.'),
-        background = AttrMapValue(isNoneOrShape, desc='Handle to background object.'),
+        background = AttrMapValue(isNoneOrShape, desc='Handle to background object e.g. Rect(0,0,width,height).'),
         debug = AttrMapValue(isNumber, desc='Used only for debugging.'),
         )
 

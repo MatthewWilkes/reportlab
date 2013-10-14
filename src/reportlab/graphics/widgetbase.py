@@ -1,7 +1,7 @@
 #Copyright ReportLab Europe Ltd. 2000-2004
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/graphics/widgetbase.py
-__version__=''' $Id: widgetbase.py 3345 2008-12-12 17:55:22Z damian $ '''
+__version__=''' $Id: widgetbase.py 3604 2009-11-27 16:35:29Z meitham $ '''
 __doc__='''Base class for user-defined graphical widgets'''
 
 import string
@@ -311,14 +311,14 @@ class StyleProperties(PropHolder):
     """
 
     _attrMap = AttrMap(
-        strokeWidth = AttrMapValue(isNumber),
-        strokeLineCap = AttrMapValue(isNumber),
-        strokeLineJoin = AttrMapValue(isNumber),
-        strokeMiterLimit = AttrMapValue(None),
-        strokeDashArray = AttrMapValue(isListOfNumbersOrNone),
-        strokeOpacity = AttrMapValue(isNumber),
-        strokeColor = AttrMapValue(isColorOrNone),
-        fillColor = AttrMapValue(isColorOrNone),
+        strokeWidth = AttrMapValue(isNumber,desc='width of the stroke line'),
+        strokeLineCap = AttrMapValue(isNumber,desc='Line cap 0=butt, 1=round & 2=square',advancedUsage=1),
+        strokeLineJoin = AttrMapValue(isNumber,desc='Line join 0=miter, 1=round & 2=bevel',advancedUsage=1),
+        strokeMiterLimit = AttrMapValue(None,desc='miter limit control miter line joins',advancedUsage=1),
+        strokeDashArray = AttrMapValue(isListOfNumbersOrNone,desc='dashing patterns e.g. (1,3)'),
+        strokeOpacity = AttrMapValue(isNumber,desc='level of transparency (alpha) accepts values between 0..1',advancedUsage=1),
+        strokeColor = AttrMapValue(isColorOrNone,desc='the color of the stroke'),
+        fillColor = AttrMapValue(isColorOrNone,desc='the filling color'),
         desc = AttrMapValue(isString),
         )
 

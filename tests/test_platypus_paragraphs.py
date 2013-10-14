@@ -2,7 +2,7 @@
 #see license.txt for license details
 """Tests for the reportlab.platypus.paragraphs module.
 """
-__version__=''' $Id: test_platypus_paragraphs.py 3291 2008-09-15 13:21:33Z rgbecker $ '''
+__version__=''' $Id: test_platypus_paragraphs.py 3528 2009-08-18 13:18:26Z rgbecker $ '''
 from reportlab.lib.testutils import setOutDir,makeSuiteForClasses, outputfile, printLocation
 setOutDir(__name__)
 import sys, os, unittest
@@ -94,6 +94,19 @@ class ParagraphCorners(unittest.TestCase):
         story.append(Paragraph('''T<i>hi</i>s shoul<font color="red">d b</font>e <b>cAPITALIZED</b> text.''',style=btC))
         doc = MyDocTemplate(outputfile('test_platypus_specialparagraphs.pdf'))
         doc.multiBuild(story)
+
+    def test2(self):
+        '''CJK splitting in multi-frag case'''
+        style = ParagraphStyle('test', wordWrap = 'CJK')
+        p = Paragraph('bla <i>blub</i> '*130 , style)
+        aW,aH=439.275590551,121.88976378
+        w,h=p.wrap(aW,aH)
+        S=p.split(aW,aH)
+        assert len(S)==2, 'Multi frag CJK splitting failed'
+        w0,h0=S[0].wrap(aW,aH)
+        assert h0<=aH,'Multi-frag CJK split[0] has wrong height %s >= available %s' % (H0,aH)
+        w1,h1=S[1].wrap(aW,aH)
+        assert h0+h1==h, 'Multi-frag-CJK split[0].height(%s)+split[1].height(%s) don\'t add to original %s' % (h0,h1,h)
         
 class ParagraphSplitTestCase(unittest.TestCase):
     "Test multi-page splitting of paragraphs (eyeball-test)."

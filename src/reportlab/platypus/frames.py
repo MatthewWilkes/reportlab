@@ -2,7 +2,7 @@
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/platypus/frames.py
 
-__version__=''' $Id: frames.py 3345 2008-12-12 17:55:22Z damian $ '''
+__version__=''' $Id: frames.py 3449 2009-03-03 17:38:41Z rgbecker $ '''
 
 __doc__="""A frame is a container for content on a page.
 """
@@ -247,3 +247,6 @@ class Frame:
 
     def add_generated_content(self,*C):
         self.__dict__.setdefault('_generated_content',[]).extend(C)
+
+    def _aSpaceString(self):
+        return '(%s x %s%s)' % (self._getAvailableWidth(),self._aH,self._atTop and '*' or '')

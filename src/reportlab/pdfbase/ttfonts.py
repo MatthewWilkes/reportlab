@@ -1,7 +1,6 @@
-#Copyright ReportLab Europe Ltd. 2000-2004
+#Copyright ReportLab Europe Ltd. 2000-2009
 #see license.txt for license details
-#history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/pdfbase/ttfonts.py
-__version__ = '$Id: ttfonts.py 3345 2008-12-12 17:55:22Z damian $'
+__version__ = '$Id: ttfonts.py 3608 2009-12-04 16:12:34Z rgbecker $'
 __doc__="""TrueType font support
 
 This defines classes to represent TrueType fonts.  They know how to calculate
@@ -53,9 +52,8 @@ Canvas and TextObject have special support for dynamic fonts.
 """
 
 import string
-from types import StringType, UnicodeType
-from struct import pack, unpack
-from cStringIO import StringIO
+from struct import pack, unpack, error as structError
+from reportlab.lib.utils import getStringIO
 from reportlab.pdfbase import pdfmetrics, pdfdoc
 
 class TTFError(pdfdoc.PDFError):
@@ -258,13 +256,13 @@ class TTFontParser:
             raise TTFError('Not a TrueType font: version=0x%8.8X' % version)
         return version==self.ttfVersions[-1]
 
-    def readFile(self,file):
-        if type(file) is StringType:
-            self.filename, file = TTFOpenFile(file)
-        else:
+    def readFile(self,f):
+        if hasattr(f,'read'):
             self.filename = '(ttf)'
+        else:
+            self.filename, f = TTFOpenFile(f)
 
-        self._ttf_data = file.read()
+        self._ttf_data = f.read()
         self._pos = 0
 
     def checksumTables(self):
@@ -323,7 +321,10 @@ class TTFontParser:
     def read_short(self):
         "Reads a signed short"
         self._pos += 2
-        return unpack('>h',self._ttf_data[self._pos-2:self._pos])[0]
+        try:
+            return unpack('>h',self._ttf_data[self._pos-2:self._pos])[0]
+        except structError, error:
+            raise TTFError, error
 
     def get_ushort(self, pos):
         "Return an unsigned short at given position"
@@ -357,7 +358,8 @@ class TTFontMaker:
 
     def makeStream(self):
         "Finishes the generation and returns the TTF file as a string"
-        stm = StringIO()
+        stm = getStringIO()
+        write = stm.write
 
         numTables = len(self.tables)
         searchRange = 1
@@ -369,7 +371,7 @@ class TTFontMaker:
         rangeShift = numTables * 16 - searchRange
 
         # Header
-        stm.write(pack(">lHHHH", 0x00010000, numTables, searchRange,
+        write(pack(">lHHHH", 0x00010000, numTables, searchRange,
                                  entrySelector, rangeShift))
 
         # Table directory
@@ -380,20 +382,20 @@ class TTFontMaker:
             if tag == 'head':
                 head_start = offset
             checksum = calcChecksum(data)
-            stm.write(tag)
-            stm.write(pack(">LLL", checksum, offset, len(data)))
+            write(tag)
+            write(pack(">LLL", checksum, offset, len(data)))
             paddedLength = (len(data)+3)&~3
             offset = offset + paddedLength
 
         # Table data
         for tag, data in tables:
-            data = data + "\0\0\0"
-            stm.write(data[:len(data)&~3])
+            data += "\0\0\0"
+            write(data[:len(data)&~3])
 
         checksum = calcChecksum(stm.getvalue())
         checksum = add32(0xB1B0AFBAL, -checksum)
         stm.seek(head_start + 8)
-        stm.write(pack('>L', checksum))
+        write(pack('>L', checksum))
 
         return stm.getvalue()
 
@@ -482,7 +484,17 @@ class TTFontFile(TTFontParser):
                 names[nameId] = N
                 nameCount -= 1
                 if nameCount==0: break
-        psName = names[6].replace(" ", "-")  #Dinu Gherman's fix for font names with spaces
+        if names[6] is not None:
+            psName = names[6].replace(" ", "-")  #Dinu Gherman's fix for font names with spaces
+        elif names[4] is not None:
+            psName = names[4].replace(" ", "-")
+        # Fine, one last try before we bail.
+        elif names[1] is not None:
+            psName = names[1].replace(" ", "-")
+        else:
+            psName = None
+
+        # Don't just assume, check for None since some shoddy fonts cause crashes here...
         if not psName:
             raise TTFError, "Could not find PostScript font name"
         for c in psName:
@@ -736,6 +748,8 @@ class TTFontFile(TTFontParser):
             originalGlyphIdx = glyphMap[n]
             glyphPos = self.glyphPos[originalGlyphIdx]
             glyphLen = self.glyphPos[originalGlyphIdx + 1] - glyphPos
+            n += 1
+            if not glyphLen: continue
             self.seek(start + glyphPos)
             numberOfContours = self.read_short()
             if numberOfContours < 0:
@@ -758,7 +772,6 @@ class TTFontFile(TTFontParser):
                         self.skip(4)
                     elif flags & GF_WE_HAVE_A_TWO_BY_TWO:
                         self.skip(8)
-            n += 1
 
         numGlyphs = n = len(glyphMap)
         while n > 1 and self.hmetrics[n][0] == self.hmetrics[n - 1][0]:
@@ -998,7 +1011,7 @@ class TTFont:
 
     def _py_stringWidth(self, text, size, encoding='utf-8'):
         "Calculate text width"
-        if type(text) is not UnicodeType:
+        if not isinstance(text,unicode):
             text = unicode(text, encoding or 'utf-8')   # encoding defaults to utf-8
         g = self.face.charWidths.get
         dw = self.face.defaultWidth
@@ -1028,7 +1041,7 @@ class TTFont:
         curSet = -1
         cur = []
         results = []
-        if type(text) is not UnicodeType:
+        if not isinstance(text,unicode):
             text = unicode(text, encoding or 'utf-8')   # encoding defaults to utf-8
         assignments = state.assignments
         subsets = state.subsets

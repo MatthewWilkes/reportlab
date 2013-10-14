@@ -1,7 +1,7 @@
 #Copyright ReportLab Europe Ltd. 2000-2004
 #see license.txt for license details
 #history www.reportlab.co.uk/rl-cgi/viewcvs.cgi/rlextra/graphics/Csrc/renderPM/renderP.py
-__version__=''' $Id: renderPM.py 3345 2008-12-12 17:55:22Z damian $ '''
+__version__=''' $Id: renderPM.py 3614 2009-12-09 18:04:13Z rgbecker $ '''
 __doc__="""Render drawing objects in common bitmap formats
 
 Usage::
@@ -29,10 +29,7 @@ try:
 except ImportError, errMsg:
     raise ImportError, "No module named _renderPM\n" + \
         (str(errMsg)!='No module named _renderPM' and "it may be the wrong version or badly installed!" or
-                                    "see http://www.reportlab.org/rl_addons.html")
-
-from types import TupleType, ListType
-_SeqTypes = (TupleType,ListType)
+                                    "see http://www.reportlab.org/oss/rl-addons/")
 
 def _getImage():
     try:
@@ -74,13 +71,19 @@ class _PMRenderer(Renderer):
         s = self._tracker.getState()
         self._canvas.ctm = s['ctm']
         self._canvas.strokeWidth = s['strokeWidth']
-        self._canvas.strokeColor = Color2Hex(s['strokeColor'])
+        alpha = s['strokeOpacity']
+        if alpha is not None:
+            self._canvas.strokeOpacity = alpha
+        self._canvas.setStrokeColor(s['strokeColor'])
         self._canvas.lineCap = s['strokeLineCap']
         self._canvas.lineJoin = s['strokeLineJoin']
         da = s['strokeDashArray']
         da = da and (0,da) or None
         self._canvas.dashArray = da
-        self._canvas.fillColor = Color2Hex(s['fillColor'])
+        alpha = s['fillOpacity']
+        if alpha is not None:
+            self._canvas.fillOpacity = alpha
+        self._canvas.setFillColor(s['fillColor'])
         self._canvas.setFont(s['fontName'], s['fontSize'])
 
     def initState(self,x,y):
@@ -168,9 +171,11 @@ class _PMRenderer(Renderer):
             if not text_anchor in ['start','inherited']:
                 textLen = stringWidth(text, fontName,fontSize)
                 if text_anchor=='end':
-                    x = x-textLen
+                    x -= textLen
                 elif text_anchor=='middle':
-                    x = x - textLen/2
+                    x -= textLen/2
+                elif text_anchor=='numeric':
+                    x -= numericXShift(text_anchor,text,textLen,fontName,fontSize,stringObj.encoding)
                 else:
                     raise ValueError, 'bad value for textAnchor '+str(text_anchor)
             canv.drawString(x,y,text,_fontInfo=(fontName,fontSize))
@@ -455,6 +460,8 @@ class PMCanvas:
                 x -= textLen
             elif text_anchor=='middle':
                 x -= textLen/2.
+            elif text_anchor=='numeric':
+                x -= numericXShift(text_anchor,text,textLen,self.fontName,self.fontSize)
             self.drawString(x,y,text)
 
     def drawRightString(self, text, x, y):
@@ -602,9 +609,15 @@ class PMCanvas:
 
     def setFillColor(self,aColor):
         self.fillColor = Color2Hex(aColor)
+        alpha = getattr(aColor,'alpha',None)
+        if alpha is not None:
+            self.fillOpacity = alpha
 
     def setStrokeColor(self,aColor):
         self.strokeColor = Color2Hex(aColor)
+        alpha = getattr(aColor,'alpha',None)
+        if alpha is not None:
+            self.strokeOpacity = alpha
 
     restoreState = saveState
 

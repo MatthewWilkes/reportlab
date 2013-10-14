@@ -1,7 +1,7 @@
 #Copyright ReportLab Europe Ltd. 2000-2004
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/lib/styles.py
-__version__=''' $Id: styles.py 3342 2008-12-12 15:55:34Z andy $ '''
+__version__=''' $Id: styles.py 3457 2009-04-20 14:48:42Z rgbecker $ '''
 __doc__='''Classes for ParagraphStyle and similar things.
 
 
@@ -254,6 +254,33 @@ def getSampleStyleSheet():
                                   spaceBefore=12,
                                   spaceAfter=6),
                    alias='h3')
+
+    stylesheet.add(ParagraphStyle(name='Heading4',
+                                  parent=stylesheet['Normal'],
+                                  fontName = 'Times-BoldItalic',
+                                  fontSize=10,
+                                  leading=12,
+                                  spaceBefore=10,
+                                  spaceAfter=4),
+                   alias='h4')
+
+    stylesheet.add(ParagraphStyle(name='Heading5',
+                                  parent=stylesheet['Normal'],
+                                  fontName = 'Times-Bold',
+                                  fontSize=9,
+                                  leading=10.8,
+                                  spaceBefore=8,
+                                  spaceAfter=4),
+                   alias='h5')
+
+    stylesheet.add(ParagraphStyle(name='Heading6',
+                                  parent=stylesheet['Normal'],
+                                  fontName = 'Times-Bold',
+                                  fontSize=7,
+                                  leading=8.4,
+                                  spaceBefore=6,
+                                  spaceAfter=2),
+                   alias='h6')
 
     stylesheet.add(ParagraphStyle(name='Bullet',
                                   parent=stylesheet['Normal'],

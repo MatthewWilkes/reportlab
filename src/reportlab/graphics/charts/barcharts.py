@@ -1,13 +1,12 @@
 #Copyright ReportLab Europe Ltd. 2000-2004
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/graphics/charts/barcharts.py
-__version__=''' $Id: barcharts.py 3345 2008-12-12 17:55:22Z damian $ '''
+__version__=''' $Id: barcharts.py 3604 2009-11-27 16:35:29Z meitham $ '''
 __doc__="""This module defines a variety of Bar Chart components.
 
-The basic flavors are Side-by-side, available in horizontal and
-vertical versions.
+The basic flavors are stacked and side-by-side, available in horizontal and
+vertical versions. 
 
-Stacked and percentile bar charts to follow...
 """
 
 import copy
@@ -33,9 +32,9 @@ class BarChartProperties(PropHolder):
         fillColor = AttrMapValue(isColorOrNone, desc='Color of the bar interior area.'),
         strokeWidth = AttrMapValue(isNumber, desc='Width of the bar border.'),
         strokeDashArray = AttrMapValue(isListOfNumbersOrNone, desc='Dash array of a line.'),
-        symbol = AttrMapValue(None, desc='A widget to be used instead of a normal bar.'),
+        symbol = AttrMapValue(None, desc='A widget to be used instead of a normal bar.',advancedUsage=1),
         name = AttrMapValue(isString, desc='Text to be associated with a bar (eg seriesname)'),
-        swatchMarker = AttrMapValue(NoneOr(isSymbol), desc="None or makeMarker('Diamond') ..."),
+        swatchMarker = AttrMapValue(NoneOr(isSymbol), desc="None or makeMarker('Diamond') ...",advancedUsage=1),
         )
 
     def __init__(self):
@@ -50,7 +49,7 @@ class BarChart(PlotArea):
     "Abstract base class, unusable by itself."
 
     _attrMap = AttrMap(BASE=PlotArea,
-        useAbsolute = AttrMapValue(isNumber, desc='Flag to use absolute spacing values.'),
+        useAbsolute = AttrMapValue(isNumber, desc='Flag to use absolute spacing values.',advancedUsage=1),
         barWidth = AttrMapValue(isNumber, desc='The width of an individual bar.'),
         groupSpacing = AttrMapValue(isNumber, desc='Width between groups of bars.'),
         barSpacing = AttrMapValue(isNumber, desc='Width between individual bars.'),
@@ -60,10 +59,10 @@ class BarChart(PlotArea):
         data = AttrMapValue(None, desc='Data to be plotted, list of (lists of) numbers.'),
         barLabels = AttrMapValue(None, desc='Handle to the list of bar labels.'),
         barLabelFormat = AttrMapValue(None, desc='Formatting string or function used for bar labels.'),
-        barLabelCallOut = AttrMapValue(None, desc='Callout function(label)\nlabel._callOutInfo = (self,g,rowNo,colNo,x,y,width,height,x00,y00,x0,y0)'),
+        barLabelCallOut = AttrMapValue(None, desc='Callout function(label)\nlabel._callOutInfo = (self,g,rowNo,colNo,x,y,width,height,x00,y00,x0,y0)',advancedUsage=1),
         barLabelArray = AttrMapValue(None, desc='explicit array of bar label values, must match size of data if present.'),
-        reversePlotOrder = AttrMapValue(isBoolean, desc='If true, reverse common category plot order.'),
-        naLabel = AttrMapValue(NoneOrInstanceOfNA_Label, desc='Label to use for N/A values.'),
+        reversePlotOrder = AttrMapValue(isBoolean, desc='If true, reverse common category plot order.',advancedUsage=1),
+        naLabel = AttrMapValue(NoneOrInstanceOfNA_Label, desc='Label to use for N/A values.',advancedUsage=1),
         annotations = AttrMapValue(None, desc='list of callables, will be called with self, xscale, yscale.'),
         )
 
@@ -193,11 +192,15 @@ class BarChart(PlotArea):
         self.calcBarPositions()
         g = Group()
         g.add(self.makeBackground())
-        cA.makeGrid(g,parent=self, dim=vA.getGridDims)
-        vA.makeGrid(g,parent=self, dim=cA.getGridDims)
+        cAdgl = getattr(cA,'drawGridLast',False)
+        vAdgl = getattr(vA,'drawGridLast',False)
+        if not cAdgl: cA.makeGrid(g,parent=self, dim=vA.getGridDims)
+        if not vAdgl: vA.makeGrid(g,parent=self, dim=cA.getGridDims)
         g.add(self.makeBars())
         g.add(cA)
         g.add(vA)
+        if cAdgl: cA.makeGrid(g,parent=self, dim=vA.getGridDims)
+        if vAdgl: vA.makeGrid(g,parent=self, dim=cA.getGridDims)
         for a in getattr(self,'annotations',()): g.add(a(self,cA.scale,vA.scale))
         del self._configureData
         return g
@@ -322,16 +325,29 @@ class BarChart(PlotArea):
     def _labelXY(self,label,x,y,width,height):
         'Compute x, y for a label'
         nudge = label.nudge
-        anti = getattr(label,'boxTarget','normal')=='anti'
+        bt = getattr(label,'boxTarget','normal')
+        anti = bt=='anti'
         if anti: nudge = -nudge
-        if self._flipXY:
-            value = width
-            if anti: value = 0
-            return x + value + (width>=0 and 1 or -1)*nudge, y + 0.5*height
+        pm = value = height
+        if anti: value = 0
+        a = x + 0.5*width
+        nudge = (height>=0 and 1 or -1)*nudge
+        if bt=='hi':
+            if value>=0:
+                b = y + value + nudge
+            else:
+                b = y - nudge
+                pm = -pm
+        elif bt=='lo':
+            if value<=0:
+                b = y + value + nudge
+            else:
+                b = y - nudge
+                pm = -pm
         else:
-            value = height
-            if anti: value = 0
-            return x + 0.5*width, y + value + (height>=0 and 1 or -1)*nudge
+            b = y + value + nudge
+        label._pmv = pm #the plus minus val
+        return a,b,pm
 
     def _addBarLabel(self, g, rowNo, colNo, x, y, width, height):
         text = self._getLabelText(rowNo,colNo)
@@ -350,13 +366,11 @@ class BarChart(PlotArea):
     def _addLabel(self, text, label, g, rowNo, colNo, x, y, width, height):
         if label.visible:
             labelWidth = stringWidth(text, label.fontName, label.fontSize)
-            x0, y0 = self._labelXY(label,x,y,width,height)
             flipXY = self._flipXY
             if flipXY:
-                pm = width
+                y0, x0, pm = self._labelXY(label,y,x,height,width)
             else:
-                pm = height
-            label._pmv = pm #the plus minus val
+                x0, y0, pm = self._labelXY(label,x,y,width,height)
             fixedEnd = getattr(label,'fixedEnd', None)
             if fixedEnd is not None:
                 v = fixedEnd._getValue(self,pm)

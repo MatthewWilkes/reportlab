@@ -1,7 +1,7 @@
 #Copyright ReportLab Europe Ltd. 2000-2004
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/lib/validators.py
-__version__=''' $Id: validators.py 3342 2008-12-12 15:55:34Z andy $ '''
+__version__=''' $Id: validators.py 3550 2009-09-11 16:56:43Z rgbecker $ '''
 __doc__="""Standard verifying functions used by attrmap."""
 
 import string, sys, codecs
@@ -105,6 +105,21 @@ class _isListOfNumbersOrNone(Validator):
     def test(self, x):
         if x is None: return True
         return isListOfNumbers(x)
+
+class isNumberInRange(_isNumber):
+    def __init__(self, min, max):
+        self.min = min
+        self.max = max
+
+    def test(self, x):
+        try:
+            n = self.normalize(x)
+            if self.min <= n <= self.max:
+                return True
+        except ValueError:
+            pass
+        return False
+
 
 class _isListOfShapes(Validator):
     "ListOfShapes validator class."
@@ -280,12 +295,21 @@ class DerivedValue:
 class Inherit(DerivedValue):
     def __repr__(self):
         return "inherit"
-    
+
     def getValue(self, renderer, attr):
         return renderer.getStateValue(attr)
-
 inherit = Inherit()
-    
+
+class NumericAlign(str):
+    '''for creating the numeric string value for anchors etc etc
+    dp is the character to align on (the last occurrence will be used)
+    dpLen is the length of characters after the dp
+    '''
+    def __new__(cls,dp='.',dpLen=0):
+        self = str.__new__(cls,'numeric')
+        self._dp=dp
+        self._dpLen = dpLen
+        return self
 
 isAuto = Auto()
 isBoolean = _isBoolean()

@@ -3,7 +3,7 @@
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/graphics/renderPDF.py
 # renderPDF - draws Drawings onto a canvas
 
-__version__=''' $Id: renderPDF.py 3345 2008-12-12 17:55:22Z damian $ '''
+__version__=''' $Id: renderPDF.py 3613 2009-12-09 18:03:32Z rgbecker $ '''
 __doc__="""Render Drawing objects within others PDFs or standalone
 
 Usage::
@@ -158,9 +158,11 @@ class _PDFRenderer(Renderer):
                 font, font_size = S['fontName'], S['fontSize']
                 textLen = stringWidth(text, font, font_size, enc)
                 if text_anchor=='end':
-                    x = x-textLen
+                    x -= textLen
                 elif text_anchor=='middle':
-                    x = x - textLen/2
+                    x -= textLen*0.5
+                elif text_anchor=='numeric':
+                    x -= numericXShift(text_anchor,text,textLen,font,font_size,enc)
                 else:
                     raise ValueError, 'bad value for textAnchor '+str(text_anchor)
             t = self._canvas.beginText(x,y)
@@ -183,6 +185,12 @@ class _PDFRenderer(Renderer):
                         fill=fill,
                         stroke=self._stroke)
 
+    def setStrokeColor(self,c):
+        self._canvas.setStrokeColor(c)
+
+    def setFillColor(self,c):
+        self._canvas.setFillColor(c)
+
     def applyStateChanges(self, delta, newState):
         """This takes a set of states, and outputs the PDF operators
         needed to set those properties"""
@@ -198,7 +206,7 @@ class _PDFRenderer(Renderer):
                     self._stroke = 0
                 else:
                     self._stroke = 1
-                    self._canvas.setStrokeColor(value)
+                    self.setStrokeColor(value)
             elif key == 'strokeWidth':
                 self._canvas.setLineWidth(value)
             elif key == 'strokeLineCap':  #0,1,2
@@ -220,7 +228,7 @@ class _PDFRenderer(Renderer):
                     self._fill = 0
                 else:
                     self._fill = 1
-                    self._canvas.setFillColor(value)
+                    self.setFillColor(value)
             elif key in ['fontSize', 'fontName']:
                 # both need setting together in PDF
                 # one or both might be in the deltas,
@@ -228,6 +236,16 @@ class _PDFRenderer(Renderer):
                 fontname = delta.get('fontName', self._canvas._fontname)
                 fontsize = delta.get('fontSize', self._canvas._fontsize)
                 self._canvas.setFont(fontname, fontsize)
+            elif key=='fillOpacity':
+                if value is not None:
+                    self._canvas.setFillAlpha(value)
+            elif key=='strokeOpacity':
+                if value is not None:
+                    self._canvas.setStrokeAlpha(value)
+            elif key=='fillOverprint':
+                self._canvas.setFillOverprint(value)
+            elif key=='strokeOverprint':
+                self._canvas.setStrokeOverprint(value)
 
 from reportlab.platypus import Flowable
 class GraphicsFlowable(Flowable):
@@ -249,16 +267,17 @@ def drawToFile(d, fn, msg="", showBoundary=rl_config._unset_, autoSize=1):
     if too big."""
     d = renderScaledDrawing(d)
     c = Canvas(fn)
-    c.setFont('Times-Roman', 36)
-    c.drawString(80, 750, msg)
+    if msg:
+        c.setFont(rl_config.defaultGraphicsFontName, 36)
+        c.drawString(80, 750, msg)
     c.setTitle(msg)
 
     if autoSize:
         c.setPageSize((d.width, d.height))
         draw(d, c, 0, 0, showBoundary=showBoundary)
     else:
-    #show with a title
-        c.setFont('Times-Roman', 12)
+        #show with a title
+        c.setFont(rl_config.defaultGraphicsFontName, 12)
         y = 740
         i = 1
         y = y - d.height

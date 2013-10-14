@@ -1,7 +1,7 @@
-#Copyright ReportLab Europe Ltd. 2000-2004
+#Copyright ReportLab Europe Ltd. 2000-2010
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/lib/abag.py
-__version__=''' $Id: abag.py 3342 2008-12-12 15:55:34Z andy $ '''
+__version__=''' $Id: abag.py 3623 2009-12-17 16:18:34Z andy $ '''
 __doc__='''Data structure to hold a collection of attributes, used by styles.'''
 class ABag:
     """
@@ -24,20 +24,10 @@ class ABag:
         return n
 
     def __repr__(self):
-        import string
-        n = self.__class__.__name__
-        L = [n+"("]
-        keys = self.__dict__.keys()
-        for k in keys:
-            v = getattr(self, k)
-            rk = repr(k)
-            rv = repr(v)
-            rk = "  "+string.replace(rk, "\n", "\n  ")
-            rv = "    "+string.replace(rv, "\n", "\n    ")
-            L.append(rk)
-            L.append(rv)
-        L.append(") #"+n)
-        return string.join(L, "\n")
+        D = self.__dict__
+        K = D.keys()
+        K.sort()
+        return '%s(%s)' % (self.__class__.__name__,', '.join(['%s=%r' % (k,D[k]) for k in K]))
 
 if __name__=="__main__":
     AB = ABag(a=1, c="hello")

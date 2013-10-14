@@ -2,7 +2,7 @@
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/platypus/doctemplate.py
 
-__version__=''' $Id: doctemplate.py 3409 2009-01-29 12:46:57Z rgbecker $ '''
+__version__=''' $Id: doctemplate.py 3605 2009-12-02 10:58:51Z rgbecker $ '''
 
 __doc__="""
 This module contains the core structure of platypus.
@@ -40,6 +40,14 @@ try:
 except NameError:
     from sets import Set as set
 
+from base64 import encodestring, decodestring
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
+dumps = pickle.dumps
+loads = pickle.loads
+
 from types import *
 import sys
 import logging
@@ -47,6 +55,20 @@ logger = logging.getLogger("reportlab.platypus")
 
 class LayoutError(Exception):
     pass
+
+def _fSizeString(f):
+    w=getattr(f,'width',None)
+    if w is None:
+        w=getattr(f,'_width',None)
+
+    h=getattr(f,'height',None)
+    if h is None:
+        h=getattr(f,'_height',None)
+    if w is not None or h is not None:
+        if w is None: w='???'
+        if h is None: h='???'
+        return '(%s x %s)' % (w,h)
+    return ''
 
 def _doNothing(canvas, doc):
     "Dummy callback for onPage"
@@ -121,9 +143,9 @@ class ActionFlowable(Flowable):
                 raise NotImplementedError, "Can't handle ActionFlowable(%s)" % action
             else:
                 raise
-        except "bogus":
-            t, v, unused = sys.exc_info()
-            raise t, "%s\n   handle_%s args=%s"%(v,action,args)
+        except:
+            t, v, tb = sys.exc_info()
+            raise t, "%s\n   handle_%s args=%s"%(v,action,args), tb
 
     def __call__(self):
         return self
@@ -223,6 +245,7 @@ class PageTemplate:
     """
     def __init__(self,id=None,frames=[],onPage=_doNothing, onPageEnd=_doNothing,
                  pagesize=None):
+        frames = frames or []
         if type(frames) not in (ListType,TupleType): frames = [frames]
         assert filter(lambda x: not isinstance(x,Frame), frames)==[], "frames argument error"
         self.id = id
@@ -271,6 +294,78 @@ def _addGeneratedContent(flowables,frame):
         for i,f in enumerate(S):
             flowables.insert(i,f)
         del frame._generated_content
+
+
+class onDrawStr(str):
+    def __new__(cls,value,onDraw,label,kind=None):
+        self = str.__new__(cls,value)
+        self.onDraw = onDraw
+        self.kind = kind
+        self.label = label
+        return self
+
+class PageAccumulator:
+    '''gadget to accumulate information in a page
+    and then allow it to be interrogated at the end
+    of the page'''
+    _count = 0
+    def __init__(self,name=None):
+        if name is None:
+            name = self.__class__.__name__+str(self.__class__._count)
+            self.__class__._count += 1
+        self.name = name
+        self.data = []
+
+    def reset(self):
+        self.data[:] = []
+
+    def add(self,*args):
+        self.data.append(args)
+
+    def onDrawText(self,*args):
+        return '<onDraw name="%s" label="%s" />' % (self.name,encodestring(dumps(args)).strip())
+
+    def __call__(self,canv,kind,label):
+        self.add(*loads(decodestring(label)))
+
+    def attachToPageTemplate(self,pt):
+        if pt.onPage:
+            def onPage(canv,doc,oop=pt.onPage):
+                self.onPage(canv,doc)
+                oop(canv,doc)
+        else:
+            def onPage(canv,doc):
+                self.onPage(canv,doc)
+        pt.onPage = onPage
+        if pt.onPageEnd:
+            def onPageEnd(canv,doc,oop=pt.onPageEnd):
+                self.onPageEnd(canv,doc)
+                oop(canv,doc)
+        else:
+            def onPageEnd(canv,doc):
+                self.onPageEnd(canv,doc)
+        pt.onPageEnd = onPageEnd
+
+    def onPage(self,canv,doc):
+        '''this will be called at the start of the page'''
+        setattr(canv,self.name,self)    #push ourselves onto the canvas
+        self.reset()
+
+    def onPageEnd(self,canv,doc):
+        '''this will be called at the end of a page'''
+        self.pageEndAction(canv,doc)
+        try:
+            delattr(canv,self.name)
+        except:
+            pass
+        self.reset()
+
+    def pageEndAction(self,canv,doc):
+        '''this should be overridden to do something useful'''
+        pass
+
+    def onDrawStr(self,value,*args):
+        return onDrawStr(value,self,encodestring(dumps(args)).strip())
 
 class BaseDocTemplate:
     """
@@ -345,7 +440,9 @@ class BaseDocTemplate:
                     '_pageBreakQuick':1,
                     'rotation':0,
                     '_debug':0,
-                    'encrypt': None}
+                    'encrypt': None,
+                    'cropMarks': None,
+                    }
     _invalidInitArgs = ()
     _firstPageTemplateIndex = 0
 
@@ -549,7 +646,7 @@ class BaseDocTemplate:
                         c.append(t)
                         found = 1
                 if not found:
-                    raise ValueError("Cannot find page template called %s" % templateName)
+                    raise ValueError("Cannot find page template called %s" % ptn)
             if not c:
                 raise ValueError("No valid page templates in cycle")
             elif c._restart>len(c):
@@ -689,7 +786,9 @@ class BaseDocTemplate:
                         flowables.insert(i,f)   # put split flowables back on the list
                 else:
                     if hasattr(f,'_postponed'):
-                        ident = "Flowable %s too large on page %d" % (self._fIdent(f,60,frame), self.page)
+                        ident = "Flowable %s%s too large on page %d in frame %r%s of template %r" % \
+                                (self._fIdent(f,60,frame),_fSizeString(f),self.page, self.frame.id,
+                                        self.frame._aSpaceString(), self.pageTemplate.id)
                         #leave to keep apart from the raise
                         raise LayoutError(ident)
                     # this ought to be cleared when they are finally drawn!
@@ -724,6 +823,7 @@ class BaseDocTemplate:
  
         getattr(self.canv,'setEncrypt',lambda x: None)(self.encrypt)
 
+        self.canv._cropMarks = self.cropMarks
         self.canv.setAuthor(self.author)
         self.canv.setTitle(self.title)
         self.canv.setSubject(self.subject)
@@ -825,9 +925,9 @@ class BaseDocTemplate:
         self._pageRefs[label] = self.page
 
     def multiBuild(self, story,
-                   filename=None,
-                   canvasmaker=canvas.Canvas,
-                   maxPasses = 10):
+                   maxPasses = 10,
+                   **buildKwds
+                   ):
         """Makes multiple passes until all indexing flowables
         are happy."""
         self._indexingFlowables = []
@@ -852,7 +952,7 @@ class BaseDocTemplate:
 
             # work with a copy of the story, since it is consumed
             tempStory = story[:]
-            self.build(tempStory, filename, canvasmaker)
+            self.build(tempStory, **buildKwds)
             #self.notify('debug',None)
 
             for fl in self._indexingFlowables:

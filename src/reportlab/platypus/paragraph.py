@@ -1,7 +1,7 @@
 #Copyright ReportLab Europe Ltd. 2000-2008
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/platypus/paragraph.py
-__version__=''' $Id: paragraph.py 3402 2009-01-26 11:59:27Z rgbecker $ '''
+__version__=''' $Id: paragraph.py 3520 2009-08-03 09:05:08Z rgbecker $ '''
 __doc__='''The standard paragraph implementation'''
 from string import join, whitespace
 from operator import truth
@@ -17,6 +17,7 @@ from reportlab.lib.textsplit import wordSplit, ALL_CANNOT_START
 from copy import deepcopy
 from reportlab.lib.abag import ABag
 from reportlab.rl_config import platypus_link_underline 
+from reportlab import rl_config
 import re
 
 #on UTF8 branch, split and strip must be unicode-safe!
@@ -233,7 +234,7 @@ def _putFragLine(cur_x, tx, line):
                 if not tx._fontname:
                     tx.setFont(xs.style.fontName,xs.style.fontSize)
                     tx._textOut('',1)
-                elif kind=='img':
+                elif kind in ('img','anchor'):
                     tx._textOut('',1)
         else:
             cur_x_s = cur_x + nSpaces*ws
@@ -706,24 +707,29 @@ def cjkFragSplit(frags, maxWidths, calcBounds, encoding='utf8'):
         else:
             U.append(cjkU(text,f,encoding))
     lines = []
-    widthUsed = lineStartPos = 0
+    i = widthUsed = lineStartPos = 0
     maxWidth = maxWidths[0]
-    for i, u in enumerate(U):
+    nU = len(U)
+    while i<nU:
+        u = U[i]
+        i += 1
         w = u.width
         widthUsed += w
         lineBreak = hasattr(u.frag,'lineBreak')
         endLine = (widthUsed>maxWidth + _FUZZ and widthUsed>0) or lineBreak
         if endLine:
-            if lineBreak: continue
-            extraSpace = maxWidth - widthUsed + w
-            #This is the most important of the Japanese typography rules.
-            #if next character cannot start a line, wrap it up to this line so it hangs
-            #in the right margin. We won't do two or more though - that's unlikely and
-            #would result in growing ugliness.
-            nextChar = U[i]
-            if nextChar in ALL_CANNOT_START:
-                extraSpace -= w
-                i += 1
+            extraSpace = maxWidth - widthUsed
+            if not lineBreak:
+                extraSpace += w
+                #This is the most important of the Japanese typography rules.
+                #if next character cannot start a line, wrap it up to this line so it hangs
+                #in the right margin. We won't do two or more though - that's unlikely and
+                #would result in growing ugliness.
+                if i<nU:
+                    nextChar = U[i]
+                    if nextChar in ALL_CANNOT_START:
+                        extraSpace -= nextChar.width
+                        i += 1
             lines.append(makeCJKParaLine(U[lineStartPos:i],extraSpace,calcBounds))
             try:
                 maxWidth = maxWidths[len(lines)]
@@ -732,7 +738,7 @@ def cjkFragSplit(frags, maxWidths, calcBounds, encoding='utf8'):
 
             lineStartPos = i
             widthUsed = w
-            i -= 1
+
     #any characters left?
     if widthUsed > 0:
         lines.append(makeCJKParaLine(U[lineStartPos:],maxWidth-widthUsed,calcBounds))
@@ -757,7 +763,8 @@ class Paragraph(Flowable):
         <super> ... </super> - superscript
         <sub> ... </sub> - subscript
         <font name=fontfamily/fontname color=colorname size=float>
-        <onDraw name=callable label="a label">
+        <onDraw name=callable label="a label"/>
+        <index [name="callablecanvasattribute"] label="a label"/>
         <link>link text</link>
         attributes of links
         size/fontSize=num
@@ -840,21 +847,24 @@ class Paragraph(Flowable):
         self.blPara = blPara
         autoLeading = getattr(self,'autoLeading',getattr(style,'autoLeading',''))
         leading = style.leading
-        if blPara.kind==1 and autoLeading not in ('','off'):
-            height = 0
-            if autoLeading=='max':
-                for l in blPara.lines:
-                    height += max(l.ascent-l.descent,leading)
-            elif autoLeading=='min':
-                for l in blPara.lines:
-                    height += l.ascent - l.descent
+        if blPara.kind==1:
+            if autoLeading not in ('','off'):
+                height = 0
+                if autoLeading=='max':
+                    for l in blPara.lines:
+                        height += max(l.ascent-l.descent,leading)
+                elif autoLeading=='min':
+                    for l in blPara.lines:
+                        height += l.ascent - l.descent
+                else:
+                    raise ValueError('invalid autoLeading value %r' % autoLeading)
             else:
-                raise ValueError('invalid autoLeading value %r' % autoLeading)
+                height = len(blPara.lines) * leading
         else:
             if autoLeading=='max':
-                leading = max(leading,1.2*style.fontSize)
+                leading = max(leading,blPara.ascent-blPara.descent)
             elif autoLeading=='min':
-                leading = 1.2*style.fontSize
+                leading = blPara.ascent-blPara.descent
             height = len(blPara.lines) * leading
         self.height = height
         return self.width, height
@@ -993,7 +1003,7 @@ class Paragraph(Flowable):
         if not isinstance(width,(tuple,list)): maxWidths = [width]
         else: maxWidths = width
         lines = []
-        lineno = 0
+        self.height = lineno = 0
         style = self.style
 
         #for bullets, work out width and ensure we wrap the right amount onto line one
@@ -1001,7 +1011,6 @@ class Paragraph(Flowable):
 
         maxWidth = maxWidths[0]
 
-        self.height = 0
         autoLeading = getattr(self,'autoLeading',getattr(style,'autoLeading',''))
         calcBounds = autoLeading not in ('','off')
         frags = self.frags
@@ -1118,9 +1127,11 @@ class Paragraph(Flowable):
                         if nText!='' and nText[0]!=' ':
                             g.text += ' ' + nText
 
+                    ni = 0
                     for i in w[2:]:
                         g = i[0].clone()
                         g.text=i[1]
+                        if g.text: ni = 1
                         words.append(g)
                         fontSize = g.fontSize
                         if calcBounds:
@@ -1134,6 +1145,9 @@ class Paragraph(Flowable):
                         maxSize = max(maxSize,fontSize)
                         maxAscent = max(maxAscent,ascent)
                         minDescent = min(minDescent,descent)
+                    if not nText and ni:
+                        #one bit at least of the word was real
+                        n+=1
 
                     currentWidth = newWidth
                 else:  #either it won't fit, or it's a lineBreak tag
@@ -1207,42 +1221,42 @@ class Paragraph(Flowable):
         if not isinstance(width,(list,tuple)): maxWidths = [width]
         else: maxWidths = width
         style = self.style
+        self.height = 0
 
         #for bullets, work out width and ensure we wrap the right amount onto line one
         _handleBulletWidth(self.bulletText, style, maxWidths)
-        if len(self.frags)>1:
-            autoLeading = getattr(self,'autoLeading',getattr(style,'autoLeading',''))
-            calcBounds = autoLeading not in ('','off')
-            return cjkFragSplit(self.frags, maxWidths, calcBounds)
-            #raise ValueError('CJK Wordwrap can only handle one fragment per paragraph for now. Tried to handle:\ntext:  %s\nfrags: %s' % (self.text, self.frags))
-        elif not len(self.frags):
+        frags = self.frags
+        nFrags = len(frags)
+        if nFrags==1 and not hasattr(frags[0],'cbDefn'):
+            f = frags[0]
+            if hasattr(self,'blPara') and getattr(self,'_splitpara',0):
+                return f.clone(kind=0, lines=self.blPara.lines)
+            #single frag case
+            lines = []
+            lineno = 0
+            if hasattr(f,'text'):
+                text = f.text
+            else:
+                text = ''.join(getattr(f,'words',[]))
+
+            from reportlab.lib.textsplit import wordSplit
+            lines = wordSplit(text, maxWidths[0], f.fontName, f.fontSize)
+            #the paragraph drawing routine assumes multiple frags per line, so we need an
+            #extra list like this
+            #  [space, [text]]
+            #
+            wrappedLines = [(sp, [line]) for (sp, line) in lines]
+            return f.clone(kind=0, lines=wrappedLines, ascent=f.fontSize, descent=-0.2*f.fontSize)
+        elif nFrags<=0:
             return ParaLines(kind=0, fontSize=style.fontSize, fontName=style.fontName,
                             textColor=style.textColor, lines=[],ascent=style.fontSize,descent=-0.2*style.fontSize)
-        f = self.frags[0]
-        if 1 and hasattr(self,'blPara') and getattr(self,'_splitpara',0):
-            #NB this is an utter hack that awaits the proper information
-            #preserving splitting algorithm
-            return f.clone(kind=0, lines=self.blPara.lines)
-        lines = []
-        lineno = 0
 
-        self.height = 0
-
-        f = self.frags[0]
-
-        if hasattr(f,'text'):
-            text = f.text
-        else:
-            text = ''.join(getattr(f,'words',[]))
-
-        from reportlab.lib.textsplit import wordSplit
-        lines = wordSplit(text, maxWidths[0], f.fontName, f.fontSize)
-        #the paragraph drawing routine assumes multiple frags per line, so we need an
-        #extra list like this
-        #  [space, [text]]
-        #
-        wrappedLines = [(sp, [line]) for (sp, line) in lines]
-        return f.clone(kind=0, lines=wrappedLines, ascent=f.fontSize, descent=-0.2*f.fontSize)
+        #general case nFrags>1 or special
+        if hasattr(self,'blPara') and getattr(self,'_splitpara',0):
+            return self.blPara
+        autoLeading = getattr(self,'autoLeading',getattr(style,'autoLeading',''))
+        calcBounds = autoLeading not in ('','off')
+        return cjkFragSplit(frags, maxWidths, calcBounds)
 
     def beginText(self, x, y):
         return self.canv.beginText(x, y)
@@ -1321,7 +1335,10 @@ class Paragraph(Flowable):
                 elif self.style.alignment == TA_JUSTIFY:
                     dpl = _justifyDrawParaLine
                 f = blPara
-                cur_y = self.height - getattr(f,'ascent',f.fontSize)    #TODO fix XPreformatted to remove this hack
+                if rl_config.paraFontSizeHeightOffset:
+                    cur_y = self.height - f.fontSize
+                else:
+                    cur_y = self.height - getattr(f,'ascent',f.fontSize) 
                 if bulletText:
                     offset = _drawBullet(canvas,offset,cur_y,bulletText,style)
 
@@ -1330,9 +1347,9 @@ class Paragraph(Flowable):
 
                 tx = self.beginText(cur_x, cur_y)
                 if autoLeading=='max':
-                    leading = max(leading,1.2*f.fontSize)
+                    leading = max(leading,blPara.ascent-blPara.descent)
                 elif autoLeading=='min':
-                    leading = 1.2*f.fontSize
+                    leading = blPara.ascent-blPara.descent
 
                 #now the font for the rest of the paragraph
                 tx.setFont(f.fontName, f.fontSize, leading)
@@ -1373,7 +1390,10 @@ class Paragraph(Flowable):
                         dpl( tx, _offsets[i], lines[i][0], lines[i][1], noJustifyLast and i==lim)
             else:
                 f = lines[0]
-                cur_y = self.height - getattr(f,'ascent',f.fontSize)    #TODO fix XPreformatted to remove this hack
+                if rl_config.paraFontSizeHeightOffset:
+                    cur_y = self.height - f.fontSize
+                else:
+                    cur_y = self.height - getattr(f,'ascent',f.fontSize) 
                 # default?
                 dpl = _leftDrawParaLineX
                 if bulletText:

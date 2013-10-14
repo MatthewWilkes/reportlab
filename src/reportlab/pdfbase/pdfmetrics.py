@@ -2,7 +2,7 @@
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/pdfbase/pdfmetrics.py
 #$Header $
-__version__=''' $Id: pdfmetrics.py 3345 2008-12-12 17:55:22Z damian $ '''
+__version__=''' $Id: pdfmetrics.py 3577 2009-11-02 17:35:58Z rgbecker $ '''
 __doc__="""This provides a database of font metric information and
 efines Font, Encoding and TypeFace classes aimed at end users.
 
@@ -18,12 +18,12 @@ a registry of Font, TypeFace and Encoding objects.  Ideally these
 would be pre-loaded, but due to a nasty circularity problem we
 trap attempts to access them and do it on first access.
 """
-import string, os
+import string, os, sys
 from types import StringType, ListType, TupleType
 from reportlab.pdfbase import _fontdata
 from reportlab.lib.logger import warnOnce
-from reportlab.lib.utils import rl_isfile, rl_glob, rl_isdir, open_and_read, open_and_readlines
-from reportlab.rl_config import defaultEncoding
+from reportlab.lib.utils import rl_isfile, rl_glob, rl_isdir, open_and_read, open_and_readlines, findInPaths
+from reportlab.rl_config import defaultEncoding, T1SearchPath
 import rl_codecs
 
 rl_codecs.RL_Codecs.register()
@@ -223,10 +223,15 @@ def bruteForceSearchForAFM(faceName):
         if not rl_isdir(dirname): continue
         possibles = rl_glob(dirname + os.sep + '*.[aA][fF][mM]')
         for possible in possibles:
-            (topDict, glyphDict) = parseAFMFile(possible)
-            if topDict['FontName'] == faceName:
-                return possible
-    return None
+            try:
+                topDict, glyphDict = parseAFMFile(possible)
+                if topDict['FontName'] == faceName:
+                    return possible
+            except:
+                t,v,b=sys.exc_info()
+                v.args = (' '.join(map(str,v.args))+', while looking for faceName=%r' % faceName,)
+                raise 
+
 
 #for faceName in standardFonts:
 #    registerTypeFace(TypeFace(faceName))
@@ -464,7 +469,6 @@ def _pfbCheck(p,d,m,fn):
         raise ValueError, 'Bad pfb file\'%s\' needed %d+%d bytes have only %d!' % (fn,p,l,len(d))
     return p, p+l
 
-
 class EmbeddedType1Face(TypeFace):
     """A Type 1 font other than one of the basic 14.
 
@@ -474,6 +478,8 @@ class EmbeddedType1Face(TypeFace):
         TypeFace.__init__(self, None)
         #None is a hack, name will be supplied by AFM parse lower done
         #in this __init__ method.
+        afmFileName = findInPaths(afmFileName,T1SearchPath)
+        pfbFileName = findInPaths(pfbFileName,T1SearchPath)
         self.afmFileName = os.path.abspath(afmFileName)
         self.pfbFileName = os.path.abspath(pfbFileName)
         self.requiredEncoding = None

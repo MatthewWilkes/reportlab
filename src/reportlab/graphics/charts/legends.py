@@ -2,7 +2,7 @@
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/graphics/charts/legends.py
 
-__version__=''' $Id: legends.py 3345 2008-12-12 17:55:22Z damian $ '''
+__version__=''' $Id: legends.py 3604 2009-11-27 16:35:29Z meitham $ '''
 __doc__="""This will be a collection of legends to be used with charts."""
 
 import copy, operator
@@ -82,7 +82,7 @@ class SubColProperty(PropHolder):
     _attrMap = AttrMap(
         minWidth = AttrMapValue(isNumber,desc="minimum width for this subcol"),
         rpad = AttrMapValue(isNumber,desc="right padding for this subcol"),
-        align = AttrMapValue(OneOf('left','right','center','centre'),desc='alignment in subCol'),
+        align = AttrMapValue(OneOf('left','right','center','centre','numeric'),desc='alignment in subCol'),
         fontName = AttrMapValue(isString, desc="Font name of the strings"),
         fontSize = AttrMapValue(isNumber, desc="Font size of the strings"),
         leading = AttrMapValue(isNumber, desc="leading for the strings"),
@@ -103,6 +103,10 @@ class LegendCallout:
         return tuple([getattr(self,a,L[a]) for a in args])
 
     def __call__(self,legend,g,thisx,y,(col,name)):
+        pass
+
+class LegendSwatchCallout(LegendCallout):
+    def __call__(self,legend,g,thisx,y,i,(col,name),swatch):
         pass
 
 class LegendColEndCallout(LegendCallout):
@@ -129,9 +133,9 @@ class Legend(Widget):
         deltax = AttrMapValue(isNumberOrNone, desc="x-distance between neighbouring swatches"),
         deltay = AttrMapValue(isNumberOrNone, desc="y-distance between neighbouring swatches"),
         dxTextSpace = AttrMapValue(isNumber, desc="Distance between swatch rectangle and text"),
-        autoXPadding = AttrMapValue(isNumber, desc="x Padding between columns if deltax=None"),
-        autoYPadding = AttrMapValue(isNumber, desc="y Padding between rows if deltay=None"),
-        yGap = AttrMapValue(isNumber, desc="Additional gap between rows"),
+        autoXPadding = AttrMapValue(isNumber, desc="x Padding between columns if deltax=None",advancedUsage=1),
+        autoYPadding = AttrMapValue(isNumber, desc="y Padding between rows if deltay=None",advancedUsage=1),
+        yGap = AttrMapValue(isNumber, desc="Additional gap between rows",advancedUsage=1),
         dx = AttrMapValue(isNumber, desc="Width of swatch rectangle"),
         dy = AttrMapValue(isNumber, desc="Height of swatch rectangle"),
         columnMaximum = AttrMapValue(isNumber, desc="Max. number of items per column"),
@@ -139,22 +143,23 @@ class Legend(Widget):
         colorNamePairs = AttrMapValue(None, desc="List of color/name tuples (color can also be widget)"),
         fontName = AttrMapValue(isString, desc="Font name of the strings"),
         fontSize = AttrMapValue(isNumber, desc="Font size of the strings"),
-        fillColor = AttrMapValue(isColorOrNone, desc=""),
+        fillColor = AttrMapValue(isColorOrNone, desc="swatches filling color"),
         strokeColor = AttrMapValue(isColorOrNone, desc="Border color of the swatches"),
         strokeWidth = AttrMapValue(isNumber, desc="Width of the border color of the swatches"),
-        swatchMarker = AttrMapValue(NoneOr(AutoOr(isSymbol)), desc="None, Auto() or makeMarker('Diamond') ..."),
-        callout = AttrMapValue(None, desc="a user callout(self,g,x,y,(color,text))"),
+        swatchMarker = AttrMapValue(NoneOr(AutoOr(isSymbol)), desc="None, Auto() or makeMarker('Diamond') ...",advancedUsage=1),
+        callout = AttrMapValue(None, desc="a user callout(self,g,x,y,(color,text))",advancedUsage=1),
         boxAnchor = AttrMapValue(isBoxAnchor,'Anchor point for the legend area'),
-        variColumn = AttrMapValue(isBoolean,'If true column widths may vary (default is false)'),
-        dividerLines = AttrMapValue(OneOf(0,1,2,3,4,5,6,7),'If 1 we have dividers between the rows | 2 for extra top | 4 for bottom'),
-        dividerWidth = AttrMapValue(isNumber, desc="dividerLines width"),
-        dividerColor = AttrMapValue(isColorOrNone, desc="dividerLines color"),
-        dividerDashArray = AttrMapValue(isListOfNumbersOrNone, desc='Dash array for dividerLines.'),
-        dividerOffsX = AttrMapValue(SequenceOf(isNumber,emptyOK=0,lo=2,hi=2), desc='divider lines X offsets'),
-        dividerOffsY = AttrMapValue(isNumber, desc="dividerLines Y offset"),
-        colEndCallout = AttrMapValue(None, desc="a user callout(self,g, x, xt, y,width, lWidth)"),
+        variColumn = AttrMapValue(isBoolean,'If true column widths may vary (default is false)',advancedUsage=1),
+        dividerLines = AttrMapValue(OneOf(0,1,2,3,4,5,6,7),'If 1 we have dividers between the rows | 2 for extra top | 4 for bottom',advancedUsage=1),
+        dividerWidth = AttrMapValue(isNumber, desc="dividerLines width",advancedUsage=1),
+        dividerColor = AttrMapValue(isColorOrNone, desc="dividerLines color",advancedUsage=1),
+        dividerDashArray = AttrMapValue(isListOfNumbersOrNone, desc='Dash array for dividerLines.',advancedUsage=1),
+        dividerOffsX = AttrMapValue(SequenceOf(isNumber,emptyOK=0,lo=2,hi=2), desc='divider lines X offsets',advancedUsage=1),
+        dividerOffsY = AttrMapValue(isNumber, desc="dividerLines Y offset",advancedUsage=1),
+        colEndCallout = AttrMapValue(None, desc="a user callout(self,g, x, xt, y,width, lWidth)",advancedUsage=1),
         subCols = AttrMapValue(None,desc="subColumn properties"),
-       )
+        swatchCallout = AttrMapValue(None, desc="a user swatch callout(self,g,x,y,i,(col,name),swatch)",advancedUsage=1),
+        )
 
     def __init__(self):
         # Upper-left reference point.
@@ -225,7 +230,7 @@ class Legend(Widget):
         if not isAuto(colorNamePairs):
             texts = [_getStr(p[1]) for p in colorNamePairs]
         else:
-            chart = colorNamePairs.chart
+            chart = getattr(colorNamePairs,'chart',getattr(colorNamePairs,'obj',None))
             texts = [chart.getSeriesName(i,'series %d' % i) for i in xrange(chart._seriesCount)]
         return texts
 
@@ -349,6 +354,7 @@ class Legend(Widget):
 
         lim = columnMaximum - 1
         callout = getattr(self,'callout',None)
+        scallout = getattr(self,'swatchCallout',None)
         dividerLines = self.dividerLines
         if dividerLines:
             dividerWidth = self.dividerWidth
@@ -397,15 +403,6 @@ class Legend(Widget):
                 x2 = x+jOffs[kk+1]
                 sc = subCols[k,i]
                 anchor = sc.align
-                if anchor=='left':
-                    anchor = 'start'
-                    xoffs = x1
-                elif anchor=='right':
-                    anchor = 'end'
-                    xoffs = x2
-                else:
-                    anchor = 'middle'
-                    xoffs = 0.5*(x1+x2)
                 fN = getattr(sc,'fontName',fontName)
                 fS = getattr(sc,'fontSize',fontSize)
                 fC = getattr(sc,'fillColor',fillColor)
@@ -416,6 +413,17 @@ class Legend(Widget):
                     fA = getFont(fontName).face.ascent/1000.
                     if fA==0: fA=0.718
                     fA *= fS
+                if anchor=='left':
+                    anchor = 'start'
+                    xoffs = x1
+                elif anchor=='right':
+                    anchor = 'end'
+                    xoffs = x2
+                elif anchor=='numeric':
+                    xoffs = x2
+                else:
+                    anchor = 'middle'
+                    xoffs = 0.5*(x1+x2)
                 for t in lines:
                     aS(String(xoffs,y,t,fontName=fN,fontSize=fS,fillColor=fC, textAnchor = anchor))
                     y -= fL
@@ -451,12 +459,12 @@ class Legend(Widget):
             # Make a 'normal' color swatch...
             if isAuto(col):
                 chart = getattr(col,'chart',getattr(col,'obj',None))
-                g.add(chart.makeSwatchSample(getattr(col,'index',i),x,thisy,dx,dy))
+                c = chart.makeSwatchSample(getattr(col,'index',i),x,thisy,dx,dy)
             elif isinstance(col, colors.Color):
                 if isSymbol(swatchMarker):
-                    g.add(uSymbol2Symbol(swatchMarker,x+dx/2.,thisy+dy/2.,col))
+                    c = uSymbol2Symbol(swatchMarker,x+dx/2.,thisy+dy/2.,col)
                 else:
-                    g.add(self._defaultSwatch(x,thisy,dx,dy,fillColor=col,strokeWidth=strokeWidth,strokeColor=strokeColor))
+                    c = self._defaultSwatch(x,thisy,dx,dy,fillColor=col,strokeWidth=strokeWidth,strokeColor=strokeColor)
             elif col is not None:
                 try:
                     c = copy.deepcopy(col)
@@ -464,9 +472,14 @@ class Legend(Widget):
                     c.y = thisy
                     c.width = dx
                     c.height = dy
-                    g.add(c)
                 except:
-                    pass
+                    c = None
+            else:
+                c = None
+
+            if c:
+                g.add(c)
+                if scallout: scallout(self,g,thisx,y0,i,(col,name),c)
 
             map(g.add,S)
             if self.colEndCallout and (i%columnMaximum==lim or i==(n-1)):
