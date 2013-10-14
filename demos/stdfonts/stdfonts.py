@@ -9,7 +9,7 @@ sequences in Python literals.
 
 usage: standardfonts.py [dec|hex|oct]
 """
-__version__=''' $Id: stdfonts.py 3959 2012-09-27 14:39:39Z robin $ '''
+__version__=''' $Id$ '''
 import sys
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfgen import canvas

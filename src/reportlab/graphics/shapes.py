@@ -2,7 +2,7 @@
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/graphics/shapes.py
 
-__version__=''' $Id: shapes.py 3959 2012-09-27 14:39:39Z robin $ '''
+__version__=''' $Id$ '''
 __doc__='''Core of the graphics library - defines Drawing and Shapes'''
 
 import string, os, sys
@@ -772,7 +772,7 @@ class Drawing(Group, Flowable):
                         dtc = None
                 renderPM.drawToFile(self, filename,fmt=bmFmt,showBoundary=getattr(self,'showBorder',rl_config.showBoundary),**_extraKW(self,'_renderPM_',**kw))
                 ext = ext + '/.' + bmFmt
-                if dtc: dtc.save(fnroot)
+                if dtc: dtc.save(filename)
 
         if 'eps' in plotMode:
             try:

@@ -2,7 +2,7 @@
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/pdfbase/cidfonts.py
 #$Header $
-__version__=''' $Id: cidfonts.py 3959 2012-09-27 14:39:39Z robin $ '''
+__version__=''' $Id$ '''
 __doc__="""CID (Asian multi-byte) font support.
 
 This defines classes to represent CID fonts.  They know how to calculate

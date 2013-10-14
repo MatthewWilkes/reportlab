@@ -4,7 +4,7 @@
 __doc__="""Verfy that if in invariant mode, repeated runs
 make identical file.  This does NOT test across platforms
 or python versions, only a user can do that :-)"""
-__version__='''$Id: test_invariant.py 3959 2012-09-27 14:39:39Z robin $'''
+__version__='''$Id$'''
 from reportlab.lib.testutils import setOutDir,makeSuiteForClasses, outputfile, printLocation
 setOutDir(__name__)
 

@@ -2,7 +2,7 @@
 #see license.txt for license details
 """Tests ability to cycle through multiple page templates
 """
-__version__='''$Id: test_platypus_leftright.py 3959 2012-09-27 14:39:39Z robin $'''
+__version__='''$Id$'''
 from reportlab.lib.testutils import setOutDir,makeSuiteForClasses, outputfile, printLocation
 setOutDir(__name__)
 import sys, os, time

@@ -5,7 +5,7 @@
 # A collection of new widgets
 # author: John Precedo (johnp@reportlab.com)
 
-__version__=''' $Id: signsandsymbols.py 3959 2012-09-27 14:39:39Z robin $ '''
+__version__=''' $Id$ '''
 __doc__="""This file is a collection of widgets to produce some common signs and symbols.
 
 Widgets include:

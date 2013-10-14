@@ -1,7 +1,7 @@
 #Copyright ReportLab Europe Ltd. 2000-2012
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/tools/pythonpoint/customshapes.py
-__version__=''' $Id: customshapes.py 3959 2012-09-27 14:39:39Z robin $ '''
+__version__=''' $Id$ '''
 
 # xml parser stuff for PythonPoint
 # PythonPoint Markup Language!

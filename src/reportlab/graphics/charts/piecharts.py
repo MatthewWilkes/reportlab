@@ -6,7 +6,7 @@
 #a wedges collection whic lets you customize the group or every individual
 #wedge.
 
-__version__=''' $Id: piecharts.py 3959 2012-09-27 14:39:39Z robin $ '''
+__version__=''' $Id$ '''
 __doc__="""Basic Pie Chart class.
 
 This permits you to customize and pop out individual wedges;
@@ -515,6 +515,7 @@ class Pie(AbstractPieChart):
         orderMode = AttrMapValue(OneOf('fixed','alternate'),advancedUsage=1),
         xradius = AttrMapValue(isNumberOrNone, desc="X direction Radius"),
         yradius = AttrMapValue(isNumberOrNone, desc="Y direction Radius"),
+        innerRadiusFraction = AttrMapValue(isNumberOrNone, desc="fraction of radii to start wedges at"),
         wedgeRecord = AttrMapValue(None, desc="callable(wedge,*args,**kwds)",advancedUsage=1),
         sideLabels = AttrMapValue(isBoolean, desc="If true attempt to make piechart with labels along side and pointers"),
         sideLabelsOffset = AttrMapValue(isNumber, desc="The fraction of the pie width that the labels are situated at from the edges of the pie"),
@@ -536,7 +537,7 @@ class Pie(AbstractPieChart):
         self.pointerLabelMode = None
         self.sameRadii = False
         self.orderMode = 'fixed'
-        self.xradius = self.yradius = None
+        self.xradius = self.yradius = self.innerRadiusFraction = None
         self.sideLabels = 0
         self.sideLabelsOffset = 0.1
 
@@ -753,6 +754,8 @@ class Pie(AbstractPieChart):
         L = []
         L_add = L.append
 
+        innerRadiusFraction = self.innerRadiusFraction
+
         for i,(a1,a2) in angles:
             if a2 is None: continue
             #if we didn't use %stylecount here we'd end up with the later wedges
@@ -775,10 +778,15 @@ class Pie(AbstractPieChart):
                     cx = centerx + popout*cosAA
                     cy = centery + popout*sinAA
 
-            if aa>=_ANGLEHI:
-                theWedge = Ellipse(cx, cy, xradius, yradius)
+            if innerRadiusFraction:
+                theWedge = Wedge(cx, cy, xradius, a1, a2, yradius=yradius,
+                        radius1=xradius*innerRadiusFraction,yradius1=yradius*innerRadiusFraction)
             else:
-                theWedge = Wedge(cx, cy, xradius, a1, a2, yradius=yradius)
+                if aa>=_ANGLEHI:
+                    theWedge = Ellipse(cx, cy, xradius, yradius)
+                else:
+                    theWedge = Wedge(cx, cy, xradius, a1, a2, yradius=yradius)
+
 
             theWedge.fillColor = wedgeStyle.fillColor
             theWedge.strokeColor = wedgeStyle.strokeColor
@@ -1163,25 +1171,15 @@ class Pie3d(Pie):
         return min(abs(a-_3dva),abs(a-_3dva+360))
 
     def __init__(self):
-        self.x = 0
-        self.y = 0
-        self.width = 300
-        self.height = 200
-        self.data = [12.50,20.10,2.00,22.00,5.00,18.00,13.00]
-        self.labels = None  # or list of strings
-        self.startAngle = 90
-        self.direction = "clockwise"
-        self.simpleLabels = 1
-        self.slices = TypedPropertyCollection(Wedge3dProperties)
-        self.slices[0].fillColor = colors.darkcyan
-        self.slices[1].fillColor = colors.blueviolet
-        self.slices[2].fillColor = colors.blue
-        self.slices[3].fillColor = colors.cyan
+        Pie.__init__(self)
         self.slices[4].fillColor = colors.azure
         self.slices[5].fillColor = colors.crimson
         self.slices[6].fillColor = colors.darkviolet
-        self.checkLabelOverlap = 0
+        self.slices = TypedPropertyCollection(Wedge3dProperties)
         self.xradius = self.yradius = None
+        self.width = 300
+        self.height = 200
+        self.data = [12.50,20.10,2.00,22.00,5.00,18.00,13.00]
 
     def _fillSide(self,L,i,angle,strokeColor,strokeWidth,fillColor):
         rd = self.rad_dist(angle)

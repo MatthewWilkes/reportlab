@@ -1,6 +1,6 @@
 #Copyright ReportLab Europe Ltd. 2000-2012
 #see license.txt for license details
-__version__=''' $Id: setup.py 3963 2012-09-27 16:14:06Z rgbecker $ '''
+__version__=''' $Id$ '''
 import os, sys, glob, ConfigParser, shutil
 platform = sys.platform
 pjoin = os.path.join

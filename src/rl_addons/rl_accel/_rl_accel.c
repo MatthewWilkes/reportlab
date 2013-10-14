@@ -6,7 +6,7 @@
 * history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/lib/_rl_accel.c
 */
 #if 0
-static __version__=" $Id: _rl_accel.c 3815 2011-01-07 15:16:03Z rgbecker $ "
+static __version__=" $Id$ "
 #endif
 #include "Python.h"
 #include <stdlib.h>

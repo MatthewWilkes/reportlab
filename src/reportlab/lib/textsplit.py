@@ -10,7 +10,7 @@ in based on possible knowledge of the language and desirable 'niceness' of the a
 
 """
 
-__version__=''' $Id: textsplit.py 3959 2012-09-27 14:39:39Z robin $ '''
+__version__=''' $Id$ '''
 
 from types import StringType, UnicodeType
 from unicodedata import category

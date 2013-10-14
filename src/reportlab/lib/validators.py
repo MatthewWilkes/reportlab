@@ -1,7 +1,7 @@
-#Copyright ReportLab Europe Ltd. 2000-2012
+#Copyright ReportLab Europe Ltd. 2000-2004
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/lib/validators.py
-__version__=''' $Id: validators.py 3959 2012-09-27 14:39:39Z robin $ '''
+__version__=''' $Id$ '''
 __doc__="""Standard verifying functions used by attrmap."""
 
 import string, sys, codecs
@@ -12,6 +12,9 @@ from reportlab.lib import colors
 if sys.hexversion<0x2030000:
     True = 1
     False = 0
+
+class Percentage(float):
+    pass
 
 class Validator:
     "base validator class"
@@ -61,7 +64,7 @@ class _isBoolean(Validator):
 
 class _isString(Validator):
     def test(self,x):
-        return type(x) in (StringType, UnicodeType)
+        return isinstance(x,(str,unicode))
 
 class _isCodec(Validator):
     def test(self,x):
@@ -350,6 +353,7 @@ isNoneOrListOfNoneOrStrings=SequenceOf(isNoneOrString,'isNoneOrListOfNoneOrStrin
 isListOfNoneOrString=SequenceOf(isNoneOrString,'isListOfNoneOrString',NoneOK=0)
 isNoneOrListOfNoneOrNumbers=SequenceOf(isNumberOrNone,'isNoneOrListOfNoneOrNumbers',NoneOK=1)
 isCallable = _isCallable()
+isNoneOrCallable = NoneOr(isCallable)
 isStringOrCallable=EitherOr((isString,isCallable),'isStringOrCallable')
 isStringOrCallableOrNone=NoneOr(isStringOrCallable,'isStringOrCallableNone')
 isStringOrNone=NoneOr(isString,'isStringOrNone')

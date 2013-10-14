@@ -37,7 +37,7 @@ dot beginPre Code
 dot endPre
 - ends a preformatted object.
 """
-__version__=''' $Id: yaml.py 3959 2012-09-27 14:39:39Z robin $ '''
+__version__=''' $Id$ '''
 
 
 import sys

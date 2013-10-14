@@ -1,6 +1,6 @@
 /*
  * SGMLOP
- * $Id: sgmlop.c 3203 2008-01-03 11:22:24Z rptlab $
+ * $Id$
  *
  * The sgmlop accelerator module
  *

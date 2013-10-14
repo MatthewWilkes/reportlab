@@ -2,7 +2,7 @@
 #Copyright ReportLab Europe Ltd. 2000-2012
 #see license.txt for license details
 __doc__='testscript for reportlab.pdfgen'
-__version__=''' $Id: test_pdfgen_general.py 3959 2012-09-27 14:39:39Z robin $ '''
+__version__=''' $Id$ '''
 #tests and documents new low-level canvas
 from reportlab.lib.testutils import setOutDir,makeSuiteForClasses, outputfile, printLocation
 setOutDir(__name__)
@@ -204,7 +204,7 @@ def makeDocument(filename, pageCallBack=None):
 
     #quickie encoding test: when canvas encoding not set,
     #the following should do (tm), (r) and (c)
-    msg_uni = u'copyright\u00A9 trademark\u2122 registered\u00AE ReportLab in unicode!'
+    msg_uni = u'copyright\u00A9 trademark\u2122 registered\u00AE scissors\u2702: ReportLab in unicode!'
     msg_utf8 = msg_uni.replace('unicode','utf8').encode('utf8')
     c.drawString(100, 100, msg_uni)
     c.drawString(100, 80, msg_utf8)
@@ -1086,6 +1086,17 @@ class PdfgenTestCase(unittest.TestCase):
         canv.drawRightString(S[0],32,'Bottom Right=(%s,%s) Page Size=%s x %s' % (S[0],0,S[0],S[1]))
         canv.showPage()
         canv.save()
+
+    def testMultipleSavesOk(self):
+        c=canvas.Canvas(outputfile('test_pdfgen_savetwice.pdf'))
+        c.drawString(100, 700, 'Hello. This was saved twice')
+        c.showPage()
+
+        # Output the PDF
+        stuff = c.getpdfdata()
+        #multiple calls to save / getpdfdata used to cause errors
+        stuff = c.getpdfdata()    
+
 
 def trySomeColors(C,enforceColorSpace=None):
     from StringIO import StringIO

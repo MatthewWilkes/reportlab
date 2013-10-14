@@ -2,7 +2,7 @@
 #see license.txt for license details
 """Tests for utility functions in reportlab.pdfbase.pdfutils.
 """
-__version__='''$Id: test_pdfbase_pdfutils.py 3959 2012-09-27 14:39:39Z robin $'''
+__version__='''$Id$'''
 from reportlab.lib.testutils import setOutDir,makeSuiteForClasses, printLocation
 setOutDir(__name__)
 import os

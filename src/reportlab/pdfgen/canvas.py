@@ -1,6 +1,6 @@
 #Copyright ReportLab Europe Ltd. 2000-2012
 #see license.txt for license details
-__version__=''' $Id: canvas.py 3959 2012-09-27 14:39:39Z robin $ '''
+__version__=''' $Id$ '''
 __doc__="""
 The Canvas object is the primary interface for creating PDF files. See
 doc/reportlab-userguide.pdf for copious examples.

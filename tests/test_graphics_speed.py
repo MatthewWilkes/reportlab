@@ -4,7 +4,7 @@
 This does a test drawing with lots of things in it, running
 with and without attribute checking.
 """
-__version__ = '''$Id: test_graphics_speed.py 3959 2012-09-27 14:39:39Z robin $'''
+__version__ = '''$Id$'''
 from reportlab.lib.testutils import setOutDir,makeSuiteForClasses, outputfile, printLocation
 setOutDir(__name__)
 import os, sys, time

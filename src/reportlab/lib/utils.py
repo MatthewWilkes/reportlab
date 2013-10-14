@@ -1,7 +1,7 @@
 #Copyright ReportLab Europe Ltd. 2000-2012
 #see license.txt for license details
 # $URI:$
-__version__=''' $Id: utils.py 3959 2012-09-27 14:39:39Z robin $ '''
+__version__=''' $Id$ '''
 __doc__='''Gazillions of miscellaneous internal utility functions'''
 
 import os, sys, imp, time
@@ -291,10 +291,15 @@ def recursiveImport(modulename, baseDir=None, noCWD=0, debug=0):
         return m
     except ImportError:
         sys.path = opath
-        msg = "recursiveimport(%s,baseDir=%s) failed" % (modulename,baseDir)
+        msg = "Could not import '%s'" % modulename
         if baseDir:
-            msg = msg + " under paths '%s'" % repr(path)
+            msg = msg + " under %s" % baseDir
         raise ImportError, msg
+
+    except Exception, e:
+        msg = "Exception raised while importing '%s': %s" % (modulename, e.message)
+        raise ImportError, msg
+        
 
 def recursiveGetAttr(obj, name):
     "Can call down into e.g. object1.object2[4].attr"
@@ -1173,4 +1178,15 @@ class IdentStr(str):
         value += '[%d]' % inc
         self = str.__new__(cls,value)
         self.__inc = inc
+        return self
+
+class RLString(str):
+    '''allows specification of extra properties of a string using a dictionary of extra attributes
+    eg fontName = RLString('proxima-nova-bold',
+                    svgAttrs=dict(family='"proxima-nova"',weight='bold'))
+    '''
+    def __new__(cls,v,**kwds):
+        self = str.__new__(cls,v)
+        for k,v in kwds.iteritems():
+            setattr(self,k,v)
         return self

@@ -1,6 +1,6 @@
 #Copyright ReportLab Europe Ltd. 2000-2012
 #see license.txt for license details
-__version__=''' $Id: graph_charts.py 3959 2012-09-27 14:39:39Z robin $ '''
+__version__=''' $Id$ '''
 from tools.docco.rl_doc_utils import *
 from reportlab.graphics.shapes import *
 
@@ -106,8 +106,8 @@ disc("""<para lindent=+36>A corollary of the component approach is that you can 
        contributed by a user; we'd like to make it easy to create such
        drawings, hook the building blocks up to their legends, and feed that
        data in a consistent way.""")
-disc("""<para lindent=+36>(If you want to see the image, it is available on our website at
-<font color=blue>http://www.reportlab.com/demos/provencio.pdf</font>)""")
+disc("""<para lindent=+36>(If you want to see the image, it is available on our website
+<font color="blue"><a href="https://www.reportlab.com/media/imadj/data/RLIMG_e5e5cb85cc0a555f5433528ac38c5884.PDF">here</a></font>)""")
 
 
 ##heading3("Key Concepts and Components")

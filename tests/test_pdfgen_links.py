@@ -4,7 +4,7 @@
 """
 Tests for internal links and destinations
 """
-__version__='''$Id: test_pdfgen_links.py 3959 2012-09-27 14:39:39Z robin $'''
+__version__='''$Id$'''
 from reportlab.lib.testutils import setOutDir,makeSuiteForClasses, outputfile, printLocation
 setOutDir(__name__)
 

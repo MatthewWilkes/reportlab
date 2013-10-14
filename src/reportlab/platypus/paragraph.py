@@ -1,7 +1,7 @@
 #Copyright ReportLab Europe Ltd. 2000-2012
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/platypus/paragraph.py
-__version__=''' $Id: paragraph.py 3959 2012-09-27 14:39:39Z robin $ '''
+__version__=''' $Id$ '''
 __doc__='''The standard paragraph implementation'''
 from string import join, whitespace
 from operator import truth
@@ -90,10 +90,6 @@ class FragLine(ABag):
         fontSize    maximum fontSize seen on the line; not used at present,
                     but could be used for line spacing.
     """
-
-#our one and only parser
-# XXXXX if the parser has any internal state using only one is probably a BAD idea!
-_parser=ParaParser()
 
 def _lineClean(L):
     return join(filter(truth,split(strip(L))))
@@ -742,7 +738,7 @@ class cjkU(unicode):
     frag = property(lambda self: self._frag)
     width = property(lambda self: self._width)
 
-def makeCJKParaLine(U,extraSpace,calcBounds):
+def makeCJKParaLine(U,maxWidth,widthUsed,extraSpace,lineBreak,calcBounds):
     words = []
     CW = []
     f0 = FragLine()
@@ -772,7 +768,7 @@ def makeCJKParaLine(U,extraSpace,calcBounds):
         f0=f0.clone()
         f0.text = u''.join(CW)
         words.append(f0)
-    return FragLine(kind=1,extraSpace=extraSpace,wordCount=1,words=words[1:],fontSize=maxSize,ascent=maxAscent,descent=minDescent)
+    return FragLine(kind=1,extraSpace=extraSpace,wordCount=1,words=words[1:],fontSize=maxSize,ascent=maxAscent,descent=minDescent,maxWidth=maxWidth,currentWidth=widthUsed,lineBreak=lineBreak)
 
 def cjkFragSplit(frags, maxWidths, calcBounds, encoding='utf8'):
     '''This attempts to be wordSplit for frags using the dumb algorithm'''
@@ -841,7 +837,7 @@ def cjkFragSplit(frags, maxWidths, calcBounds, encoding='utf8'):
                     #the i>lineStart+1 condition ensures progress
                     i -= 1
                     extraSpace += w
-            lines.append(makeCJKParaLine(U[lineStartPos:i],extraSpace,calcBounds))
+            lines.append(makeCJKParaLine(U[lineStartPos:i],maxWidth,widthUsed,extraSpace,lineBreak,calcBounds))
             try:
                 maxWidth = maxWidths[len(lines)]
             except IndexError:
@@ -852,7 +848,7 @@ def cjkFragSplit(frags, maxWidths, calcBounds, encoding='utf8'):
 
     #any characters left?
     if widthUsed > 0:
-        lines.append(makeCJKParaLine(U[lineStartPos:],maxWidth-widthUsed,calcBounds))
+        lines.append(makeCJKParaLine(U[lineStartPos:],maxWidth,widthUsed,maxWidth-widthUsed,False,calcBounds))
 
     return ParaLines(kind=1,lines=lines)
 
@@ -916,7 +912,9 @@ class Paragraph(Flowable):
     def __init__(self, text, style, bulletText = None, frags=None, caseSensitive=1, encoding='utf8'):
         self.caseSensitive = caseSensitive
         self.encoding = encoding
+
         self._setup(text, style, bulletText or getattr(style,'bulletText',None), frags, cleanBlockQuotedText)
+
 
     def __repr__(self):
         n = self.__class__.__name__
@@ -928,6 +926,12 @@ class Paragraph(Flowable):
         return '\n'.join(L)
 
     def _setup(self, text, style, bulletText, frags, cleaner):
+        
+        #This used to be a global parser to save overhead.
+        #In the interests of thread safety it is being instantiated per paragraph.
+        #On the next release, we'll replace with a cElementTree parser
+        _parser = ParaParser()
+
         if frags is None:
             text = cleaner(text)
             _parser.caseSensitive = self.caseSensitive
@@ -1356,7 +1360,7 @@ class Paragraph(Flowable):
         _handleBulletWidth(self.bulletText, style, maxWidths)
         frags = self.frags
         nFrags = len(frags)
-        if nFrags==1 and not hasattr(frags[0],'cbDefn'):
+        if nFrags==1 and not hasattr(frags[0],'cbDefn') and not style.endDots:
             f = frags[0]
             if hasattr(self,'blPara') and getattr(self,'_splitpara',0):
                 return f.clone(kind=0, lines=self.blPara.lines)

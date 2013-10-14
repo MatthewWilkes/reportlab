@@ -2,7 +2,7 @@
 # Author : Jerome Alet - <alet@librelogiciel.com>
 # License : ReportLab's license
 #
-# $Id: pycanvas.py 3777 2010-09-15 15:15:46Z rgbecker $
+# $Id$
 #
 __doc__ = """A contributed Canvas class which can also output Python source code to "replay" operations later
 

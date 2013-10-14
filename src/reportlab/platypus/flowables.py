@@ -1,7 +1,7 @@
 #Copyright ReportLab Europe Ltd. 2000-2012
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/platypus/flowables.py
-__version__=''' $Id: flowables.py 3959 2012-09-27 14:39:39Z robin $ '''
+__version__=''' $Id$ '''
 __doc__="""
 A flowable is a "floating element" in a document whose exact position is determined by the
 other elements that precede it, such as a paragraph, a diagram interspersed between paragraphs,
@@ -1302,7 +1302,8 @@ class FrameSplitter(NullDraw):
 
 from reportlab.lib.sequencer import _type2formatter
 _bulletNames = dict(
-                circle=u'\u25cf',
+                bulletchar=u'\u2022',   #usually a small circle
+                circle=u'\u25cf',   #circle as high as the font
                 square=u'\u25a0',
                 disc=u'\u25cf',
                 diamond=u'\u25c6',
@@ -1544,7 +1545,7 @@ class ListFlowable(_Container,Flowable):
             start = getattr(self,'_start',None)
             if start is None:
                 if getattr(self,'_bulletType','1')=='bullet':
-                    start = 'circle'
+                    start = 'bulletchar'
                 else:
                     start = '1'
         self._start = start

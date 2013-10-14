@@ -70,7 +70,7 @@ Recently added features are:
 - save in combined presentation/handout mode (TODO)
 - add pyRXP support (TODO)
 """
-__version__='''$Id: pythonpoint.py 3959 2012-09-27 14:39:39Z robin $'''
+__version__='''$Id$'''
 import os, sys, imp, string, pprint, getopt, glob
 
 from reportlab import rl_config

@@ -1,4 +1,4 @@
-__version__=''' $Id: test_docs_build.py 3694 2010-04-06 12:54:39Z rgbecker $ '''
+__version__=''' $Id$ '''
 """Tests that all manuals can be built.
 """
 from reportlab.lib.testutils import setOutDir,SecureTestCase, printLocation

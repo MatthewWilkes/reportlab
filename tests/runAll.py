@@ -3,7 +3,7 @@
 #see license.txt for license details
 """Runs all test files in all subfolders.
 """
-__version__=''' $Id: runAll.py 3959 2012-09-27 14:39:39Z robin $ '''
+__version__=''' $Id$ '''
 import os, glob, sys, string, traceback, unittest
 
 #we need to ensure 'tests' is on the path.  It will be if you

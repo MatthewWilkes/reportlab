@@ -1,7 +1,7 @@
 #Copyright ReportLab Europe Ltd. 2000-2012
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/pdfbase/pdfdoc.py
-__version__=''' $Id: pdfdoc.py 3959 2012-09-27 14:39:39Z robin $ '''
+__version__=''' $Id$ '''
 __doc__="""
 The module pdfdoc.py handles the 'outer structure' of PDF documents, ensuring that
 all objects are properly cross-referenced and indexed to the nearest byte.  The
@@ -698,6 +698,13 @@ class PDFDictionary:
     def copy(self):
         return PDFDictionary(self.dict)
 
+    def normalize(self):
+        #normalize the names to use RL standard ie Name not /Name
+        D = self.dict
+        K = [k for k in D.iterkeys() if k.startswith('/')]
+        for k in K:
+            D[k[1:]] = D.pop(k)
+
 class checkPDFNames:
     def __init__(self,*names):
         self.names = map(PDFName,names)
@@ -1039,7 +1046,7 @@ class PDFCatalog:
                 "PageMode": PDFName("UseNone"),
                 }
     __NoDefault__ = string.split("""
-        Dests Outlines Pages Threads AcroForm Names OpenActions PageMode URI
+        Dests Outlines Pages Threads AcroForm Names OpenAction PageMode URI
         ViewerPreferences PageLabels PageLayout JavaScript StructTreeRoot SpiderInfo"""
                                  )
     __Refs__ = __NoDefault__ # make these all into references, if present

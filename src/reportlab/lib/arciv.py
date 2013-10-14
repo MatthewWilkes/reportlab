@@ -3,7 +3,7 @@
 '''
 Arciv Stream  ciphering
 '''
-__version__=''' $Id: arciv.py 3959 2012-09-27 14:39:39Z robin $ '''
+__version__=''' $Id$ '''
 from types import StringType
 class ArcIV:
 	'''

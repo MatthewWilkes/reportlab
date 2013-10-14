@@ -3,7 +3,7 @@
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/graphics/charts/doughnut.py
 # doughnut chart
 
-__version__=''' $Id: doughnut.py 3959 2012-09-27 14:39:39Z robin $ '''
+__version__=''' $Id$ '''
 __doc__="""Doughnut chart
 
 Produces a circular chart like the doughnut charts produced by Excel.

@@ -3,7 +3,7 @@
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/graphics/charts/spider.py
 # spider chart, also known as radar chart
 
-__version__=''' $Id: spider.py 3662 2010-02-09 11:23:58Z rgbecker $ '''
+__version__=''' $Id$ '''
 __doc__="""Spider Chart
 
 Normal use shows variation of 5-10 parameters against some 'norm' or target.

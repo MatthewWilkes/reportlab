@@ -2,7 +2,7 @@
 #Copyright ReportLab Europe Ltd. 2000-2012
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/graphics/widgets/grids.py
-__version__=''' $Id: table.py 3959 2012-09-27 14:39:39Z robin $ '''
+__version__=''' $Id$ '''
 
 from reportlab.graphics.widgetbase import Widget
 from reportlab.graphics.charts.textlabels import Label

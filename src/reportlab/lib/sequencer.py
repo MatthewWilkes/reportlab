@@ -1,7 +1,7 @@
 #Copyright ReportLab Europe Ltd. 2000-2012
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/lib/sequencer.py
-__version__=''' $Id: sequencer.py 3959 2012-09-27 14:39:39Z robin $ '''
+__version__=''' $Id$ '''
 __doc__="""A Sequencer class counts things. It aids numbering and formatting lists."""
 __all__='''Sequencer getSequencer setSequencer'''.split()
 #

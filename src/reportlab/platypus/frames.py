@@ -2,7 +2,7 @@
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/platypus/frames.py
 
-__version__=''' $Id: frames.py 3959 2012-09-27 14:39:39Z robin $ '''
+__version__=''' $Id$ '''
 
 __doc__="""A frame is a container for content on a page.
 """

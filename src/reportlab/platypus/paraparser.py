@@ -1,7 +1,7 @@
 #Copyright ReportLab Europe Ltd. 2000-2012
 #see license.txt for license details
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/platypus/paraparser.py
-__version__=''' $Id: paraparser.py 3959 2012-09-27 14:39:39Z robin $ '''
+__version__=''' $Id$ '''
 __doc__='''The parser used to process markup within paragraphs'''
 import string
 import re
@@ -1263,5 +1263,5 @@ them when the man struck up with his tune.]''')
     check_text('''Here comes <font face="Helvetica" size="14pt">Helvetica 14</font> with <Strong>strong</Strong> <em>emphasis</em>.''')
     check_text('''Here comes <font face="Courier" size="3cm">Courier 3cm</font> and normal again.''')
     check_text('''Before the break <br/>the middle line <br/> and the last line.''')
-    check_text('''This should be an inline image <img src='../docs/images/testimg.gif'/>!''')
+    check_text('''This should be an inline image <img src='../../../docs/images/testimg.gif'/>!''')
     check_text('''aaa&nbsp;bbbb <u>underline&#32;</u> cccc''')

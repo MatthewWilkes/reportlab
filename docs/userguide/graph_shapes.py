@@ -1,6 +1,6 @@
 #Copyright ReportLab Europe Ltd. 2000-2012
 #see license.txt for license details
-__version__='''$Id: graph_shapes.py 3959 2012-09-27 14:39:39Z robin $'''
+__version__='''$Id$'''
 from tools.docco.rl_doc_utils import *
 from reportlab.graphics.shapes import *
 

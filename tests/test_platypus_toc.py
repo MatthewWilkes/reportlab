@@ -6,7 +6,7 @@ Currently there is only one such test. Most such tests, like this
 one, will be generating a PDF document that needs to be eye-balled
 in order to find out if it is 'correct'.
 """
-__version__='''$Id: test_platypus_toc.py 3959 2012-09-27 14:39:39Z robin $'''
+__version__='''$Id$'''
 from reportlab.lib.testutils import setOutDir,makeSuiteForClasses, outputfile, printLocation
 setOutDir(__name__)
 import sys, os

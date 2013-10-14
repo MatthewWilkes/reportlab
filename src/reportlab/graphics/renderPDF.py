@@ -3,7 +3,7 @@
 #history http://www.reportlab.co.uk/cgi-bin/viewcvs.cgi/public/reportlab/trunk/reportlab/graphics/renderPDF.py
 # renderPDF - draws Drawings onto a canvas
 
-__version__=''' $Id: renderPDF.py 3959 2012-09-27 14:39:39Z robin $ '''
+__version__=''' $Id$ '''
 __doc__="""Render Drawing objects within others PDFs or standalone
 
 Usage::

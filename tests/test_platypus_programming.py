@@ -1,6 +1,6 @@
 #Copyright ReportLab Europe Ltd. 2000-2012
 #see license.txt for license details
-__version__=''' $Id: test_platypus_programming.py 3959 2012-09-27 14:39:39Z robin $ '''
+__version__=''' $Id$ '''
 
 #tests and documents Page Layout API
 __doc__="""Tests low level programming of doc templates
@@ -45,6 +45,7 @@ class PlatypusProgrammingTestCase(unittest.TestCase):
                 DocIf('i<3',Paragraph('The value of i is less than 3',normal),Paragraph('The value of i is not less than 3',normal)),
                 DocWhile('i',[DocPara('i',format='The value of i is %(__expr__)d',style=normal),DocExec('i-=1')]),
                 DocPara('repr(doc._nameSpace)',escape=True),
+                DocPara('doc.canv.getPageNumber()','The current page number is %(__expr__)d',style=normal) 
                 ]
         doc = SimpleDocTemplate(outputfile('test_doc_programming.pdf'))
         doc.build(story)
@@ -112,6 +113,7 @@ class PlatypusProgrammingTestCase(unittest.TestCase):
                     DocIf('i<3',Paragraph('The value of i is less than 3',bt),Paragraph('The value of i is not less than 3',bt)),
                     DocWhile('i',[DocPara('i',format='The value of i is %(__expr__)d',style=bt),DocExec('i-=1')]),
                     DocPara('repr(doc._nameSpace)',escape=True),
+                    DocPara('doc.canv.getPageNumber()','The current page number is %(__expr__)d') 
                     ])
         story.append(Paragraph('The Index which goes at the back', h1))
         story.append(SimpleIndex())

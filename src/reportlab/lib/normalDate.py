@@ -10,7 +10,7 @@
 # derived from an original version created
 # by Jeff Bauer of Rubicon Research and used
 # with his kind permission
-__version__=''' $Id: normalDate.py 3677 2010-02-16 17:00:00Z rgbecker $ '''
+__version__=''' $Id$ '''
 __doc__="Jeff Bauer's lightweight date class, extended by us.  Predates Python's datetime module."
 
 

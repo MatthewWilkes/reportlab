@@ -2,7 +2,7 @@
 #Copyright ReportLab Europe Ltd. 2000-2012
 #see license.txt for license details
 __doc__='checks callbacks work'
-__version__=''' $Id: test_pdfgen_callback.py 3959 2012-09-27 14:39:39Z robin $ '''
+__version__=''' $Id$ '''
 from reportlab.lib.testutils import setOutDir,makeSuiteForClasses, outputfile, printLocation
 setOutDir(__name__)
 import unittest

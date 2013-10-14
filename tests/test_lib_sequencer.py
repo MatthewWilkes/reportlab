@@ -2,7 +2,7 @@
 #see license.txt for license details
 """Tests for the reportlab.lib.sequencer module.
 """
-__version__='''$Id: test_lib_sequencer.py 3959 2012-09-27 14:39:39Z robin $'''
+__version__='''$Id$'''
 from reportlab.lib.testutils import setOutDir,makeSuiteForClasses, printLocation
 setOutDir(__name__)
 import sys, random
